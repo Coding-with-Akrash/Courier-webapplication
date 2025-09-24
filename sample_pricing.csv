@@ -1,0 +1,74 @@
+country_code,country_name,currency,min_weight,max_weight,price_per_kg,base_fee
+USA,United States,USD,0,2,18.50,5.00
+USA,United States,USD,2,5,15.00,5.00
+USA,United States,USD,5,10,12.50,5.00
+USA,United States,USD,10,20,10.00,5.00
+USA,United States,USD,20,50,8.50,5.00
+USA,United States,USD,50,100,7.00,5.00
+GBR,United Kingdom,GBP,0,2,14.00,3.50
+GBR,United Kingdom,GBP,2,5,11.50,3.50
+GBR,United Kingdom,GBP,5,10,9.50,3.50
+GBR,United Kingdom,GBP,10,20,8.00,3.50
+GBR,United Kingdom,GBP,20,50,6.50,3.50
+GBR,United Kingdom,GBP,50,100,5.50,3.50
+CAN,Canada,CAD,0,2,22.00,6.00
+CAN,Canada,CAD,2,5,18.00,6.00
+CAN,Canada,CAD,5,10,15.00,6.00
+CAN,Canada,CAD,10,20,12.00,6.00
+CAN,Canada,CAD,20,50,10.00,6.00
+CAN,Canada,CAD,50,100,8.00,6.00
+AUS,Australia,AUD,0,2,25.00,7.00
+AUS,Australia,AUD,2,5,20.00,7.00
+AUS,Australia,AUD,5,10,17.00,7.00
+AUS,Australia,AUD,10,20,14.00,7.00
+AUS,Australia,AUD,20,50,11.50,7.00
+AUS,Australia,AUD,50,100,9.50,7.00
+DEU,Germany,EUR,0,2,16.00,4.00
+DEU,Germany,EUR,2,5,13.00,4.00
+DEU,Germany,EUR,5,10,11.00,4.00
+DEU,Germany,EUR,10,20,9.00,4.00
+DEU,Germany,EUR,20,50,7.50,4.00
+DEU,Germany,EUR,50,100,6.00,4.00
+FRA,France,EUR,0,2,16.50,4.00
+FRA,France,EUR,2,5,13.50,4.00
+FRA,France,EUR,5,10,11.50,4.00
+FRA,France,EUR,10,20,9.50,4.00
+FRA,France,EUR,20,50,8.00,4.00
+FRA,France,EUR,50,100,6.50,4.00
+JPN,Japan,JPY,0,2,2000,500
+JPN,Japan,JPY,2,5,1700,500
+JPN,Japan,JPY,5,10,1400,500
+JPN,Japan,JPY,10,20,1200,500
+JPN,Japan,JPY,20,50,1000,500
+JPN,Japan,JPY,50,100,800,500
+CHN,China,CNY,0,2,120,30
+CHN,China,CNY,2,5,100,30
+CHN,China,CNY,5,10,85,30
+CHN,China,CNY,10,20,70,30
+CHN,China,CNY,20,50,60,30
+CHN,China,CNY,50,100,50,30
+IND,India,INR,0,2,1200,100
+IND,India,INR,2,5,1000,100
+IND,India,INR,5,10,850,100
+IND,India,INR,10,20,700,100
+IND,India,INR,20,50,600,100
+IND,India,INR,50,100,500,100
+PAK,Pakistan,PKR,0,1,800,50
+PAK,Pakistan,PKR,1,2,700,50
+PAK,Pakistan,PKR,2,5,600,50
+PAK,Pakistan,PKR,5,10,500,50
+PAK,Pakistan,PKR,10,20,450,50
+PAK,Pakistan,PKR,20,50,400,50
+PAK,Pakistan,PKR,50,100,350,50
+SAU,Saudi Arabia,SAR,0,2,70,20
+SAU,Saudi Arabia,SAR,2,5,60,20
+SAU,Saudi Arabia,SAR,5,10,50,20
+SAU,Saudi Arabia,SAR,10,20,45,20
+SAU,Saudi Arabia,SAR,20,50,40,20
+SAU,Saudi Arabia,SAR,50,100,35,20
+ARE,United Arab Emirates,AED,0,2,65,18
+ARE,United Arab Emirates,AED,2,5,55,18
+ARE,United Arab Emirates,AED,5,10,45,18
+ARE,United Arab Emirates,AED,10,20,40,18
+ARE,United Arab Emirates,AED,20,50,35,18
+ARE,United Arab Emirates,AED,50,100,30,18

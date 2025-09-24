@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+
+{% block title %}Reports - SwiftSend{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">Reports & Analytics</h1>
+            <p class="mt-2 text-gray-600">View detailed reports and analytics for your courier operations</p>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-calendar-day text-2xl text-blue-600"></i>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">
+                                    Today's Shipments
+                                </dt>
+                                <dd class="text-lg font-medium text-gray-900">
+                                    {{ todays_shipments or 0 }}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-5 py-3">
+                    <div class="text-sm">
+                        <a href="{{ url_for('daily_reports') }}" class="font-medium text-blue-700 hover:text-blue-900">
+                            View daily reports →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-calendar-week text-2xl text-green-600"></i>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">
+                                    This Month's Revenue
+                                </dt>
+                                <dd class="text-lg font-medium text-gray-900">
+                                    ${{ "%.2f"|format(monthly_revenue or 0) }}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-5 py-3">
+                    <div class="text-sm">
+                        <a href="{{ url_for('monthly_reports') }}" class="font-medium text-green-700 hover:text-green-900">
+                            View monthly reports →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-chart-line text-2xl text-purple-600"></i>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">
+                                    Growth Rate
+                                </dt>
+                                <dd class="text-lg font-medium text-gray-900">
+                                    {{ "%.1f"|format(growth_rate or 0) }}%
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-5 py-3">
+                    <div class="text-sm">
+                        <a href="{{ url_for('monthly_reports') }}" class="font-medium text-purple-700 hover:text-purple-900">
+                            View trends →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-boxes text-2xl text-orange-600"></i>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">
+                                    Total Shipments
+                                </dt>
+                                <dd class="text-lg font-medium text-gray-900">
+                                    {{ total_shipments or 0 }}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-5 py-3">
+                    <div class="text-sm">
+                        <a href="{{ url_for('daily_reports') }}" class="font-medium text-orange-700 hover:text-orange-900">
+                            View all data →
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Report Types -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Daily Reports -->
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                        <i class="fas fa-calendar-day text-blue-600 mr-2"></i>
+                        Daily Reports
+                    </h3>
+                    <p class="text-sm text-gray-500 mb-4">
+                        Track daily shipment volumes, revenue, and performance metrics
+                    </p>
+                    <ul class="text-sm text-gray-600 space-y-2 mb-4">
+                        <li>• Daily shipment counts and revenue</li>
+                        <li>• Weight and package value analysis</li>
+                        <li>• Top destinations by day</li>
+                        <li>• Export detailed daily reports</li>
+                    </ul>
+                    <a href="{{ url_for('daily_reports') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+                        View Daily Reports
+                    </a>
+                </div>
+            </div>
+
+            <!-- Monthly Reports -->
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                        <i class="fas fa-calendar-alt text-green-600 mr-2"></i>
+                        Monthly Reports
+                    </h3>
+                    <p class="text-sm text-gray-500 mb-4">
+                        Analyze monthly trends, growth rates, and long-term performance
+                    </p>
+                    <ul class="text-sm text-gray-600 space-y-2 mb-4">
+                        <li>• Monthly revenue and shipment trends</li>
+                        <li>• Growth rate calculations</li>
+                        <li>• Year-over-year comparisons</li>
+                        <li>• Export comprehensive monthly data</li>
+                    </ul>
+                    <a href="{{ url_for('monthly_reports') }}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium">
+                        View Monthly Reports
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="mt-8 bg-white shadow overflow-hidden sm:rounded-md">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    Recent Daily Records
+                </h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                    Latest daily performance data
+                </p>
+            </div>
+
+            {% if recent_records %}
+                <ul class="divide-y divide-gray-200">
+                    {% for record in recent_records %}
+                        <li>
+                            <div class="px-4 py-4 sm:px-6">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10">
+                                            <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                                <i class="fas fa-calendar text-blue-600"></i>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">
+                                                {{ record.date.strftime('%B %d, %Y') }}
+                                            </div>
+                                            <div class="text-sm text-gray-500">
+                                                {{ record.total_shipments }} shipments • ${{ "%.2f"|format(record.total_revenue) }} revenue
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                            {{ "%.1f"|format(record.avg_package_value) }} avg value
+                                        </span>
+                                        <div class="ml-4 text-sm text-gray-500">
+                                            Top: {{ record.top_destination or 'N/A' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="text-center py-12">
+                    <i class="fas fa-chart-bar text-4xl text-gray-400 mb-4"></i>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">No records yet</h3>
+                    <p class="text-gray-500">Start booking shipments to generate daily reports</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Back Button -->
+        <div class="mt-8 text-center">
+            <a href="{{ url_for('admin') }}" class="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Back to Admin Panel
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

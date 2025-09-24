@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - SwiftSend{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">Welcome back, {{ current_user.name }}!</h1>
+            <p class="mt-2 text-gray-600">Manage your shipments and track your packages</p>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-plus-circle text-2xl text-green-600"></i>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">
+                                    Book New Shipment
+                                </dt>
+                                <dd class="text-lg font-medium text-gray-900">
+                                    Create a new shipment
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-5 py-3">
+                    <div class="text-sm">
+                        <a href="{{ url_for('book_shipment') }}" class="font-medium text-green-700 hover:text-green-900">
+                            Book now →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-boxes text-2xl text-blue-600"></i>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">
+                                    Total Shipments
+                                </dt>
+                                <dd class="text-lg font-medium text-gray-900">
+                                    {{ total_shipments or 0 }}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-5 py-3">
+                    <div class="text-sm">
+                        <a href="{{ url_for('reports') }}" class="font-medium text-blue-700 hover:text-blue-900">
+                            View reports →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-calendar-day text-2xl text-purple-600"></i>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">
+                                    Today's Shipments
+                                </dt>
+                                <dd class="text-lg font-medium text-gray-900">
+                                    {{ todays_shipments or 0 }}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-5 py-3">
+                    <div class="text-sm">
+                        <a href="{{ url_for('daily_reports') }}" class="font-medium text-purple-700 hover:text-purple-900">
+                            Daily report →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-dollar-sign text-2xl text-green-600"></i>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">
+                                    Total Revenue
+                                </dt>
+                                <dd class="text-lg font-medium text-gray-900">
+                                    ${{ "%.2f"|format(total_revenue or 0) }}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-5 py-3">
+                    <div class="text-sm">
+                        <a href="{{ url_for('monthly_reports') }}" class="font-medium text-green-700 hover:text-green-900">
+                            Monthly report →
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily & Monthly Stats -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Today's Performance -->
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">
+                        <i class="fas fa-calendar-day text-blue-600 mr-2"></i>
+                        Today's Performance
+                    </h3>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                        Daily statistics and metrics
+                    </p>
+                </div>
+                <div class="p-6">
+                    {% if today_stats %}
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-blue-600">{{ today_stats.total_shipments }}</div>
+                                <div class="text-sm text-gray-600">Shipments</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-green-600">${{ "%.0f"|format(today_stats.total_revenue) }}</div>
+                                <div class="text-sm text-gray-600">Revenue</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-purple-600">{{ "%.1f"|format(today_stats.total_weight) }}kg</div>
+                                <div class="text-sm text-gray-600">Total Weight</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-orange-600">${{ "%.0f"|format(today_stats.avg_package_value) }}</div>
+                                <div class="text-sm text-gray-600">Avg Value</div>
+                            </div>
+                        </div>
+                        {% if today_stats.top_destination %}
+                        <div class="mt-4 pt-4 border-t border-gray-200">
+                            <div class="text-sm text-gray-600">
+                                <strong>Top Destination:</strong> {{ today_stats.top_destination }}
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-8">
+                            <i class="fas fa-chart-line text-4xl text-gray-400 mb-4"></i>
+                            <p class="text-gray-600">No data for today yet</p>
+                            <p class="text-sm text-gray-500">Start booking shipments to see daily stats</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Monthly Performance -->
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">
+                        <i class="fas fa-calendar-alt text-green-600 mr-2"></i>
+                        This Month's Performance
+                    </h3>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                        Monthly trends and growth
+                    </p>
+                </div>
+                <div class="p-6">
+                    {% if month_stats %}
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-blue-600">{{ month_stats.total_shipments }}</div>
+                                <div class="text-sm text-gray-600">Shipments</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-green-600">${{ "%.0f"|format(month_stats.total_revenue) }}</div>
+                                <div class="text-sm text-gray-600">Revenue</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-purple-600">{{ "%.1f"|format(month_stats.growth_rate) }}%</div>
+                                <div class="text-sm text-gray-600">Growth Rate</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-orange-600">${{ "%.0f"|format(month_stats.avg_package_value) }}</div>
+                                <div class="text-sm text-gray-600">Avg Value</div>
+                            </div>
+                        </div>
+                        {% if month_stats.top_destination %}
+                        <div class="mt-4 pt-4 border-t border-gray-200">
+                            <div class="text-sm text-gray-600">
+                                <strong>Top Destination:</strong> {{ month_stats.top_destination }}
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-8">
+                            <i class="fas fa-chart-bar text-4xl text-gray-400 mb-4"></i>
+                            <p class="text-gray-600">No monthly data available</p>
+                            <p class="text-sm text-gray-500">Monthly statistics will appear here</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Shipments -->
+        <div class="bg-white shadow overflow-hidden sm:rounded-md">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    Recent Shipments
+                </h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                    Your latest shipment activities
+                </p>
+            </div>
+
+            {% if shipments %}
+                <ul class="divide-y divide-gray-200">
+                    {% for shipment in shipments %}
+                        <li>
+                            <a href="{{ url_for('shipment_receipt', shipment_id=shipment.id) }}" class="block hover:bg-gray-50">
+                                <div class="px-4 py-4 sm:px-6">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10">
+                                                <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                                    <i class="fas fa-shipping-fast text-gray-600"></i>
+                                                </div>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900 font-mono">
+                                                    {{ shipment.tracking_id }}
+                                                </div>
+                                                <div class="text-sm text-gray-500">
+                                                    {{ shipment.destination_country.name }} • {{ shipment.final_price }} {{ shipment.destination_country.currency }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                                {% if shipment.status == 'booked' %}bg-yellow-100 text-yellow-800
+                                                {% elif shipment.status == 'in_transit' %}bg-blue-100 text-blue-800
+                                                {% elif shipment.status == 'delivered' %}bg-green-100 text-green-800
+                                                {% else %}bg-red-100 text-red-800{% endif %}">
+                                                {{ shipment.status.title() }}
+                                            </span>
+                                            <div class="ml-4 text-sm text-gray-500">
+                                                {{ shipment.created_at.strftime('%b %d, %Y') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="text-center py-12">
+                    <i class="fas fa-box-open text-4xl text-gray-400 mb-4"></i>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">No shipments yet</h3>
+                    <p class="text-gray-500 mb-4">Get started by booking your first shipment</p>
+                    <a href="{{ url_for('book_shipment') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        Book Your First Shipment
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

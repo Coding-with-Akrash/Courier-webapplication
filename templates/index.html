@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <!-- Hero Section -->
+    <section class="gradient-bg min-h-screen flex items-center">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+            <h1 class="text-5xl md:text-6xl font-bold text-white mb-6 fade-in">
+                Fast & Reliable Courier Services
+            </h1>
+            <p class="text-xl text-blue-100 mb-8">
+                Deliver your packages with speed and confidence across the globe.
+            </p>
+            <div class="space-x-4">
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('book_shipment') }}" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:shadow-lg inline-block">
+                        Book Shipment
+                    </a>
+                    <a href="{{ url_for('dashboard') }}" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:shadow-lg inline-block">
+                        View Dashboard
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('register') }}" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:shadow-lg inline-block">
+                        Get Started
+                    </a>
+                    <a href="{{ url_for('login') }}" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:shadow-lg inline-block">
+                        Login
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Why Choose SwiftSend?</h2>
+                <p class="text-xl text-gray-600">Experience the difference with our premium courier services</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="text-center p-6">
+                    <div class="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-shipping-fast text-2xl text-blue-600"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Fast Delivery</h3>
+                    <p class="text-gray-600">Lightning-fast delivery to over 200 countries worldwide</p>
+                </div>
+
+                <div class="text-center p-6">
+                    <div class="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-shield-alt text-2xl text-green-600"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Secure & Reliable</h3>
+                    <p class="text-gray-600">Your packages are protected with comprehensive insurance</p>
+                </div>
+
+                <div class="text-center p-6">
+                    <div class="bg-purple-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-calculator text-2xl text-purple-600"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Smart Pricing</h3>
+                    <p class="text-gray-600">Choose between actual or volumetric weight for best rates</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Our Services</h2>
+                <p class="text-xl text-gray-600">Comprehensive shipping solutions for all your needs</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <i class="fas fa-box text-3xl text-blue-600 mb-4"></i>
+                    <h3 class="text-lg font-semibold mb-2">Package Shipping</h3>
+                    <p class="text-gray-600">Standard and express package delivery services</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <i class="fas fa-cube text-3xl text-green-600 mb-4"></i>
+                    <h3 class="text-lg font-semibold mb-2">Volumetric Pricing</h3>
+                    <p class="text-gray-600">Smart pricing based on package dimensions</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <i class="fas fa-globe text-3xl text-purple-600 mb-4"></i>
+                    <h3 class="text-lg font-semibold mb-2">Global Coverage</h3>
+                    <p class="text-gray-600">Worldwide shipping to 200+ countries</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <i class="fas fa-receipt text-3xl text-red-600 mb-4"></i>
+                    <h3 class="text-lg font-semibold mb-2">Digital Receipts</h3>
+                    <p class="text-gray-600">Instant PDF receipts with tracking information</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-20 bg-blue-600">
+        <div class="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-white mb-4">Ready to Ship Your Package?</h2>
+            <p class="text-xl text-blue-100 mb-8">Join thousands of satisfied customers who trust SwiftSend</p>
+            {% if not current_user.is_authenticated %}
+                <div class="space-x-4">
+                    <a href="{{ url_for('register') }}" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:shadow-lg inline-block">
+                        Create Account
+                    </a>
+                    <a href="{{ url_for('login') }}" class="bg-blue-100 text-blue-600 px-8 py-3 rounded-lg font-semibold hover:shadow-lg inline-block">
+                        Login
+                    </a>
+                </div>
+            {% else %}
+                <a href="{{ url_for('book_shipment') }}" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:shadow-lg inline-block">
+                    Book Your Shipment Now
+                </a>
+            {% endif %}
+        </div>
+    </section>
+{% endblock %}

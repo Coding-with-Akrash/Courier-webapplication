@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwiftSend Courier Services</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .login-modal {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .login-modal.active {
+            display: flex;
+            opacity: 1;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="font-sans bg-gray-50">
+    <!-- Navigation -->
+    <nav class="fixed w-full bg-white shadow-lg z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-shipping-fast text-2xl text-blue-600 mr-2"></i>
+                    <span class="text-xl font-bold text-gray-900">SwiftSend</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="loginBtn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                        Login
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="gradient-bg min-h-screen flex items-center pt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+            <h1 class="text-5xl md:text-6xl font-bold text-white mb-6 fade-in">
+                Fast & Reliable Courier Services
+            </h1>
+            <p class="text-xl text-blue-100 mb-8">
+                Deliver your packages with speed and confidence.
+            </p>
+            <button id="getStartedBtn" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:shadow-lg">
+                Get Started
+            </button>
+        </div>
+    </section>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="login-modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <h2 class="text-2xl font-bold mb-4">Admin Login</h2>
+            <form id="loginForm">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Email</label>
+                    <input type="email" id="email" value="admin@swiftsend.com" class="w-full p-2 border rounded" readonly>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Password</label>
+                    <input type="password" id="password" class="w-full p-2 border rounded" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">
+                    Sign In
+                </button>
+            </form>
+            <p class="text-sm text-gray-600 mt-4">Default password: <strong>admin123</strong></p>
+        </div>
+    </div>
+
+    <!-- Booking Form (Hidden by default) -->
+    <div id="bookingSection" class="hidden min-h-screen pt-16 p-8">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-3xl font-bold mb-8">Book New Shipment</h1>
+            
+            <form id="shipmentForm" class="space-y-6">
+                <!-- Sender Information -->
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold mb-4">Sender Information</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" name="senderName" placeholder="Full Name" class="p-2 border rounded" required>
+                        <input type="text" name="senderCNIC" placeholder="CNIC" class="p-2 border rounded" required>
+                        <input type="tel" name="senderPhone" placeholder="Phone Number" class="p-2 border rounded" required>
+                        <input type="text" name="senderPostalCode" placeholder="Postal Code" class="p-2 border rounded" required>
+                        <textarea name="senderAddress" placeholder="Address" class="p-2 border rounded md:col-span-2" required></textarea>
+                    </div>
+                </div>
+
+                <!-- Receiver Information -->
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold mb-4">Receiver Information</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" name="receiverName" placeholder="Full Name" class="p-2 border rounded" required>
+                        <input type="text" name="receiverCNIC" placeholder="CNIC" class="p-2 border rounded" required>
+                        <input type="tel" name="receiverPhone" placeholder="Phone Number" class="p-2 border rounded" required>
+                        <input type="text" name="receiverPostalCode" placeholder="Postal Code" class="p-2 border rounded" required>
+                        <textarea name="receiverAddress" placeholder="Address" class="p-2 border rounded md:col-span-2" required></textarea>
+                    </div>
+                </div>
+
+                <!-- Package Information -->
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold mb-4">Package Information</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <input type="number" name="length" placeholder="Length (cm)" class="p-2 border rounded" required>
+                        <input type="number" name="width" placeholder="Width (cm)" class="p-2 border rounded" required>
+                        <input type="number" name="height" placeholder="Height (cm)" class="p-2 border rounded" required>
+                        <input type="number" name="weight" placeholder="Weight (kg)" class="p-2 border rounded" required>
+                    </div>
+                </div>
+
+                <!-- Calculations -->
+                <div id="calculations" class="bg-blue-600 text-white p-6 rounded-lg shadow hidden">
+                    <h2 class="text-xl font-semibold mb-4">Price Calculation</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>Volumetric Weight:</div>
+                        <div id="volWeight">-</div>
+                        <div>Chargeable Weight:</div>
+                        <div id="chargeWeight">-</div>
+                        <div>Base Price:</div>
+                        <div id="basePrice">-</div>
+                        <div>GST (18%):</div>
+                        <div id="gstAmount">-</div>
+                        <div class="font-bold">Final Price:</div>
+                        <div id="finalPrice" class="font-bold">-</div>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-green-600 text-white p-3 rounded hover:bg-green-700">
+                    Book Shipment & Generate Receipt
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Simple authentication
+        const CORRECT_PASSWORD = 'admin123';
+        
+        // DOM Elements
+        const loginBtn = document.getElementById('loginBtn');
+        const loginModal = document.getElementById('loginModal');
+        const loginForm = document.getElementById('loginForm');
+        const getStartedBtn = document.getElementById('getStartedBtn');
+        const bookingSection = document.getElementById('bookingSection');
+        const shipmentForm = document.getElementById('shipmentForm');
+        const calculationsDiv = document.getElementById('calculations');
+
+        // Show login modal
+        loginBtn.addEventListener('click', () => {
+            loginModal.classList.add('active');
+        });
+
+        // Get Started button
+        getStartedBtn.addEventListener('click', () => {
+            loginModal.classList.add('active');
+        });
+
+        // Login form submission
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const password = document.getElementById('password').value;
+            
+            if (password === CORRECT_PASSWORD) {
+                loginModal.classList.remove('active');
+                document.querySelector('nav').style.display = 'none';
+                bookingSection.classList.remove('hidden');
+            } else {
+                alert('Invalid password. Please try again.');
+            }
+        });
+
+        // Close modal when clicking outside
+        loginModal.addEventListener('click', (e) => {
+            if (e.target === loginModal) {
+                loginModal.classList.remove('active');
+            }
+        });
+
+        // Real-time calculations
+        const dimensionInputs = document.querySelectorAll('input[name="length"], input[name="width"], input[name="height"], input[name="weight"]');
+        dimensionInputs.forEach(input => {
+            input.addEventListener('input', calculatePricing);
+        });
+
+        function calculatePricing() {
+            const length = parseFloat(document.querySelector('input[name="length"]').value) || 0;
+            const width = parseFloat(document.querySelector('input[name="width"]').value) || 0;
+            const height = parseFloat(document.querySelector('input[name="height"]').value) || 0;
+            const weight = parseFloat(document.querySelector('input[name="weight"]').value) || 0;
+
+            if (length > 0 && width > 0 && height > 0) {
+                calculationsDiv.classList.remove('hidden');
+                
+                const volWeight = (length * width * height) / 5000;
+                const chargeWeight = Math.max(weight, volWeight);
+                const basePrice = chargeWeight * 100;
+                const gst = basePrice * 0.18;
+                const finalPrice = basePrice + gst;
+
+                document.getElementById('volWeight').textContent = volWeight.toFixed(2) + ' kg';
+                document.getElementById('chargeWeight').textContent = chargeWeight.toFixed(2) + ' kg';
+                document.getElementById('basePrice').textContent = '₹' + basePrice.toFixed(2);
+                document.getElementById('gstAmount').textContent = '₹' + gst.toFixed(2);
+                document.getElementById('finalPrice').textContent = '₹' + finalPrice.toFixed(2);
+            }
+        }
+
+        // Generate Tracking ID
+        function generateTrackingId() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const count = localStorage.getItem('shipmentCount') || 0;
+            const newCount = parseInt(count) + 1;
+            localStorage.setItem('shipmentCount', newCount);
+            return `EX-${year}-${month}-${String(newCount).padStart(2, '0')}`;
+        }
+
+        // Form submission
+        shipmentForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(shipmentForm);
+            const trackingId = generateTrackingId();
+            
+            // Generate PDF receipt
+            generatePDF(formData, trackingId);
+            
+            alert(`Shipment booked successfully!\nTracking ID: ${trackingId}\nPDF receipt will download automatically.`);
+            shipmentForm.reset();
+            calculationsDiv.classList.add('hidden');
+        });
+
+        // PDF Generation
+        function generatePDF(formData, trackingId) {
+            const length = parseFloat(formData.get('length'));
+            const width = parseFloat(formData.get('width'));
+            const height = parseFloat(formData.get('height'));
+            const weight = parseFloat(formData.get('weight'));
+            
+            const volWeight = (length * width * height) / 5000;
+            const chargeWeight = Math.max(weight, volWeight);
+            const basePrice = chargeWeight * 100;
+            const gst = basePrice * 0.18;
+            const finalPrice = basePrice + gst;
+
+            const docDefinition = {
+                content: [
+                    { text: 'SwiftSend Courier Services', style: 'header' },
+                    { text: 'Shipment Receipt', style: 'subheader' },
+                    { text: `Tracking ID: ${trackingId}`, style: 'tracking' },
+                    { text: '\n' },
+                    {
+                        columns: [
+                            {
+                                width: '*',
+                                text: [
+                                    { text: 'Sender Information:\n', style: 'label' },
+                                    `Name: ${formData.get('senderName')}\n`,
+                                    `CNIC: ${formData.get('senderCNIC')}\n`,
+                                    `Phone: ${formData.get('senderPhone')}\n`,
+                                    `Address: ${formData.get('senderAddress')}\n`,
+                                    `Postal Code: ${formData.get('senderPostalCode')}\n`
+                                ]
+                            },
+                            {
+                                width: '*',
+                                text: [
+                                    { text: 'Receiver Information:\n', style: 'label' },
+                                    `Name: ${formData.get('receiverName')}\n`,
+                                    `CNIC: ${formData.get('receiverCNIC')}\n`,
+                                    `Phone: ${formData.get('receiverPhone')}\n`,
+                                    `Address: ${formData.get('receiverAddress')}\n`,
+                                    `Postal Code: ${formData.get('receiverPostalCode')}\n`
+                                ]
+                            }
+                        ]
+                    },
+                    { text: '\n' },
+                    { text: 'Package Details:', style: 'label' },
+                    `Dimensions: ${length}cm x ${width}cm x ${height}cm\n`,
+                    `Actual Weight: ${weight}kg\n`,
+                    `Volumetric Weight: ${volWeight.toFixed(2)}kg\n`,
+                    `Chargeable Weight: ${chargeWeight.toFixed(2)}kg\n`,
+                    { text: '\n' },
+                    { text: 'Pricing Details:', style: 'label' },
+                    `Base Price: ₹${basePrice.toFixed(2)}\n`,
+                    `GST (18%): ₹${gst.toFixed(2)}\n`,
+                    { text: `Final Price: ₹${finalPrice.toFixed(2)}`, style: 'finalPrice' },
+                    { text: '\n\n' },
+                    { text: `Date: ${new Date().toLocaleDateString()}`, style: 'date' }
+                ],
+                styles: {
+                    header: { fontSize: 18, bold: true, margin: [0, 0, 0, 10] },
+                    subheader: { fontSize: 16, bold: true, margin: [0, 10, 0, 5] },
+                    tracking: { fontSize: 14, bold: true, color: 'blue' },
+                    label: { bold: true, margin: [0, 5, 0, 2] },
+                    finalPrice: { fontSize: 14, bold: true, color: 'green' },
+                    date: { italics: true, alignment: 'right' }
+                }
+            };
+
+            pdfMake.createPdf(docDefinition).download(`receipt-${trackingId}.pdf`);
+        }
+    </script>
+</body>
+</html>
