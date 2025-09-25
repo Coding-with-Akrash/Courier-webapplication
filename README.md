@@ -1,4 +1,4 @@
-# SwiftSend Courier Services
+# PICS Courier Services
 
 A complete Python web application for courier services with advanced features including weight-based pricing, client authentication, and PDF receipt generation.
 
@@ -30,7 +30,7 @@ A complete Python web application for courier services with advanced features in
 4. **Access the application**:
    - Open your browser and go to `http://localhost:5000`
    - Default admin login:
-     - Email: `admin@swiftsend.com`
+     - Email: `admin@pics.com`
      - Password: `admin123`
 
 ## Usage

@@ -409,7 +409,7 @@ def download_receipt(shipment_id):
     content = []
 
     # Header
-    content.append(Paragraph('SwiftSend Courier Services', title_style))
+    content.append(Paragraph('PICS Courier Services', title_style))
     content.append(Paragraph('Shipment Receipt', styles['Heading2']))
     content.append(Paragraph(f'Tracking ID: {shipment.tracking_id}', styles['Heading3']))
     content.append(Spacer(1, 20))
@@ -496,7 +496,7 @@ def download_receipt(shipment_id):
 
     # Footer
     content.append(Paragraph(f'Date: {shipment.created_at.strftime("%Y-%m-%d %H:%M")}', styles['Normal']))
-    content.append(Paragraph('Thank you for choosing SwiftSend!', styles['Italic']))
+    content.append(Paragraph('Thank you for choosing PICS!', styles['Italic']))
 
     doc.build(content)
 

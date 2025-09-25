@@ -2,125 +2,158 @@
 
 {% block content %}
     <!-- Hero Section -->
-    <section class="gradient-bg min-h-screen flex items-center">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-            <h1 class="text-5xl md:text-6xl font-bold text-white mb-6 fade-in">
-                Fast & Reliable Courier Services
-            </h1>
-            <p class="text-xl text-blue-100 mb-8">
-                Deliver your packages with speed and confidence across the globe.
-            </p>
-            <div class="space-x-4">
-                {% if current_user.is_authenticated %}
-                    <a href="{{ url_for('book_shipment') }}" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:shadow-lg inline-block">
-                        Book Shipment
-                    </a>
-                    <a href="{{ url_for('dashboard') }}" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:shadow-lg inline-block">
-                        View Dashboard
-                    </a>
-                {% else %}
-                    <a href="{{ url_for('register') }}" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:shadow-lg inline-block">
-                        Get Started
-                    </a>
-                    <a href="{{ url_for('login') }}" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:shadow-lg inline-block">
-                        Login
-                    </a>
-                {% endif %}
+    <section class="hero-gradient min-h-screen flex items-center relative overflow-hidden">
+        <div class="absolute inset-0 bg-black/20"></div>
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+            <div class="fade-in">
+                <h1 class="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+                    Fast & Reliable
+                    <span class="block text-gradient">Courier Services</span>
+                </h1>
+                <p class="text-xl md:text-2xl text-blue-100 mb-12 max-w-3xl mx-auto leading-relaxed">
+                    Deliver your packages with speed and confidence across the globe with our advanced tracking and premium service.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-6 justify-center items-center">
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('book_shipment') }}" class="modern-button bg-white text-blue-600 px-10 py-4 text-lg font-semibold hover:bg-blue-50 shadow-2xl">
+                            <i class="fas fa-rocket mr-2"></i>Book Shipment Now
+                        </a>
+                        <a href="{{ url_for('dashboard') }}" class="modern-button glass-effect text-white px-10 py-4 text-lg font-semibold border-2 border-white/30 hover:bg-white/20">
+                            <i class="fas fa-tachometer-alt mr-2"></i>View Dashboard
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('register') }}" class="modern-button bg-white text-blue-600 px-10 py-4 text-lg font-semibold hover:bg-blue-50 shadow-2xl">
+                            <i class="fas fa-user-plus mr-2"></i>Get Started Free
+                        </a>
+                        <a href="{{ url_for('login') }}" class="modern-button glass-effect text-white px-10 py-4 text-lg font-semibold border-2 border-white/30 hover:bg-white/20">
+                            <i class="fas fa-sign-in-alt mr-2"></i>Login
+                        </a>
+                    {% endif %}
+                </div>
             </div>
         </div>
+        <!-- Floating elements for visual appeal -->
+        <div class="absolute top-20 left-10 w-20 h-20 bg-white/10 rounded-full animate-pulse"></div>
+        <div class="absolute bottom-20 right-10 w-32 h-32 bg-white/5 rounded-full animate-pulse delay-1000"></div>
+        <div class="absolute top-1/2 left-20 w-16 h-16 bg-white/10 rounded-full animate-bounce"></div>
     </section>
 
     <!-- Features Section -->
-    <section class="py-20 bg-white">
+    <section class="py-24 bg-gradient-to-br from-gray-50 to-blue-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <h2 class="text-3xl font-bold text-gray-900 mb-4">Why Choose SwiftSend?</h2>
-                <p class="text-xl text-gray-600">Experience the difference with our premium courier services</p>
+            <div class="text-center mb-20 slide-up">
+                <h2 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+                    Why Choose <span class="text-gradient">PICS?</span>
+                </h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+                    Experience the difference with our premium courier services designed for the modern world
+                </p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="text-center p-6">
-                    <div class="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-shipping-fast text-2xl text-blue-600"></i>
+                <div class="modern-card p-8 text-center group slide-up">
+                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-shipping-fast text-3xl text-white"></i>
                     </div>
-                    <h3 class="text-xl font-semibold mb-2">Fast Delivery</h3>
-                    <p class="text-gray-600">Lightning-fast delivery to over 200 countries worldwide</p>
+                    <h3 class="text-2xl font-bold mb-4 text-gray-900">Lightning Fast</h3>
+                    <p class="text-gray-600 leading-relaxed">Lightning-fast delivery to over 200 countries worldwide with real-time tracking</p>
                 </div>
 
-                <div class="text-center p-6">
-                    <div class="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-shield-alt text-2xl text-green-600"></i>
+                <div class="modern-card p-8 text-center group slide-up" style="animation-delay: 0.2s">
+                    <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-shield-alt text-3xl text-white"></i>
                     </div>
-                    <h3 class="text-xl font-semibold mb-2">Secure & Reliable</h3>
-                    <p class="text-gray-600">Your packages are protected with comprehensive insurance</p>
+                    <h3 class="text-2xl font-bold mb-4 text-gray-900">Secure & Reliable</h3>
+                    <p class="text-gray-600 leading-relaxed">Your packages are protected with comprehensive insurance and advanced security</p>
                 </div>
 
-                <div class="text-center p-6">
-                    <div class="bg-purple-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-calculator text-2xl text-purple-600"></i>
+                <div class="modern-card p-8 text-center group slide-up" style="animation-delay: 0.4s">
+                    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-calculator text-3xl text-white"></i>
                     </div>
-                    <h3 class="text-xl font-semibold mb-2">Smart Pricing</h3>
-                    <p class="text-gray-600">Choose between actual or volumetric weight for best rates</p>
+                    <h3 class="text-2xl font-bold mb-4 text-gray-900">Smart Pricing</h3>
+                    <p class="text-gray-600 leading-relaxed">Choose between actual or volumetric weight for the most cost-effective rates</p>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Services Section -->
-    <section class="py-20 bg-gray-50">
+    <section class="py-24 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <h2 class="text-3xl font-bold text-gray-900 mb-4">Our Services</h2>
-                <p class="text-xl text-gray-600">Comprehensive shipping solutions for all your needs</p>
+            <div class="text-center mb-20 slide-up">
+                <h2 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+                    Our <span class="text-gradient">Services</span>
+                </h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+                    Comprehensive shipping solutions designed to meet all your logistics needs
+                </p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                <div class="bg-white p-6 rounded-lg shadow-lg">
-                    <i class="fas fa-box text-3xl text-blue-600 mb-4"></i>
-                    <h3 class="text-lg font-semibold mb-2">Package Shipping</h3>
-                    <p class="text-gray-600">Standard and express package delivery services</p>
+                <div class="modern-card p-8 text-center group slide-up">
+                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl w-16 h-16 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-box text-2xl text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4 text-gray-900">Package Shipping</h3>
+                    <p class="text-gray-600 leading-relaxed">Standard and express package delivery services with flexible options</p>
                 </div>
 
-                <div class="bg-white p-6 rounded-lg shadow-lg">
-                    <i class="fas fa-cube text-3xl text-green-600 mb-4"></i>
-                    <h3 class="text-lg font-semibold mb-2">Volumetric Pricing</h3>
-                    <p class="text-gray-600">Smart pricing based on package dimensions</p>
+                <div class="modern-card p-8 text-center group slide-up" style="animation-delay: 0.1s">
+                    <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl w-16 h-16 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-cube text-2xl text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4 text-gray-900">Smart Pricing</h3>
+                    <p class="text-gray-600 leading-relaxed">Intelligent pricing based on package dimensions and weight</p>
                 </div>
 
-                <div class="bg-white p-6 rounded-lg shadow-lg">
-                    <i class="fas fa-globe text-3xl text-purple-600 mb-4"></i>
-                    <h3 class="text-lg font-semibold mb-2">Global Coverage</h3>
-                    <p class="text-gray-600">Worldwide shipping to 200+ countries</p>
+                <div class="modern-card p-8 text-center group slide-up" style="animation-delay: 0.2s">
+                    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl w-16 h-16 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-globe text-2xl text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4 text-gray-900">Global Coverage</h3>
+                    <p class="text-gray-600 leading-relaxed">Worldwide shipping network covering 200+ countries and territories</p>
                 </div>
 
-                <div class="bg-white p-6 rounded-lg shadow-lg">
-                    <i class="fas fa-receipt text-3xl text-red-600 mb-4"></i>
-                    <h3 class="text-lg font-semibold mb-2">Digital Receipts</h3>
-                    <p class="text-gray-600">Instant PDF receipts with tracking information</p>
+                <div class="modern-card p-8 text-center group slide-up" style="animation-delay: 0.3s">
+                    <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl w-16 h-16 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-receipt text-2xl text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4 text-gray-900">Digital Receipts</h3>
+                    <p class="text-gray-600 leading-relaxed">Instant PDF receipts with comprehensive tracking information</p>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- CTA Section -->
-    <section class="py-20 bg-blue-600">
-        <div class="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-            <h2 class="text-3xl font-bold text-white mb-4">Ready to Ship Your Package?</h2>
-            <p class="text-xl text-blue-100 mb-8">Join thousands of satisfied customers who trust SwiftSend</p>
+    <section class="py-24 hero-gradient relative overflow-hidden">
+        <div class="absolute inset-0 bg-black/20"></div>
+        <div class="relative max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8 slide-up">
+            <h2 class="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
+                Ready to Ship Your
+                <span class="text-gradient">Package?</span>
+            </h2>
+            <p class="text-xl md:text-2xl text-blue-100 mb-12 max-w-2xl mx-auto leading-relaxed">
+                Join thousands of satisfied customers who trust PICS for their shipping needs
+            </p>
             {% if not current_user.is_authenticated %}
-                <div class="space-x-4">
-                    <a href="{{ url_for('register') }}" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:shadow-lg inline-block">
-                        Create Account
+                <div class="flex flex-col sm:flex-row gap-6 justify-center items-center">
+                    <a href="{{ url_for('register') }}" class="modern-button bg-white text-blue-600 px-10 py-4 text-lg font-semibold hover:bg-blue-50 shadow-2xl">
+                        <i class="fas fa-user-plus mr-2"></i>Create Free Account
                     </a>
-                    <a href="{{ url_for('login') }}" class="bg-blue-100 text-blue-600 px-8 py-3 rounded-lg font-semibold hover:shadow-lg inline-block">
-                        Login
+                    <a href="{{ url_for('login') }}" class="modern-button glass-effect text-white px-10 py-4 text-lg font-semibold border-2 border-white/30 hover:bg-white/20">
+                        <i class="fas fa-sign-in-alt mr-2"></i>Login to Continue
                     </a>
                 </div>
             {% else %}
-                <a href="{{ url_for('book_shipment') }}" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:shadow-lg inline-block">
-                    Book Your Shipment Now
+                <a href="{{ url_for('book_shipment') }}" class="modern-button bg-white text-blue-600 px-12 py-5 text-xl font-semibold hover:bg-blue-50 shadow-2xl">
+                    <i class="fas fa-rocket mr-3"></i>Book Your Shipment Now
                 </a>
             {% endif %}
         </div>
+        <!-- Decorative elements -->
+        <div class="absolute bottom-10 left-10 w-24 h-24 bg-white/5 rounded-full animate-pulse delay-500"></div>
+        <div class="absolute top-10 right-20 w-16 h-16 bg-white/10 rounded-full animate-bounce delay-700"></div>
     </section>
 {% endblock %}
