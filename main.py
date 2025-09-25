@@ -14,7 +14,7 @@ from reportlab.pdfgen import canvas
 from flask import Response
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 from reportlab.lib import colors
 import csv
 
@@ -356,7 +356,7 @@ def book_shipment():
         update_monthly_records()
 
         flash(f'Shipment booked successfully! Tracking ID: {tracking_id}', 'success')
-        return redirect(url_for('shipment_receipt', shipment_id=shipment.id))
+        return redirect(url_for('shipment_slip', shipment_id=shipment.id))
 
     return render_template('book_shipment.html', form=form)
 
@@ -383,6 +383,145 @@ def shipment_receipt(shipment_id):
         return redirect(url_for('dashboard'))
 
     return render_template('receipt.html', shipment=shipment)
+
+@app.route('/shipment/<int:shipment_id>/slip')
+@login_required
+def shipment_slip(shipment_id):
+    shipment = Shipment.query.get_or_404(shipment_id)
+    if shipment.client_id != current_user.id and not current_user.is_admin:
+        flash('Access denied.', 'error')
+        return redirect(url_for('dashboard'))
+
+    return render_template('shipment_slip.html', shipment=shipment)
+
+@app.route('/shipment/<int:shipment_id>/download-all-slips')
+@login_required
+def download_all_slips(shipment_id):
+    shipment = Shipment.query.get_or_404(shipment_id)
+    if shipment.client_id != current_user.id and not current_user.is_admin:
+        flash('Access denied.', 'error')
+        return redirect(url_for('dashboard'))
+
+    # Generate PDF with all three slips
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+
+    # Custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=20,
+        spaceAfter=20,
+        alignment=1  # Center alignment
+    )
+
+    content = []
+
+    # Helper function to create slip content
+    def create_slip_content(slip_type, title, border_color):
+        slip_content = []
+
+        # Header
+        slip_content.append(Paragraph(f'PICS Courier Services - {title}', title_style))
+        slip_content.append(Paragraph(f'Tracking ID: {shipment.tracking_id}', styles['Heading3']))
+        slip_content.append(Spacer(1, 20))
+
+        # Sender and Receiver Information
+        sender_receiver_data = [
+            ['Sender Information', 'Receiver Information'],
+            ['Name:', shipment.sender_name, 'Name:', shipment.receiver_name],
+            ['CNIC:', shipment.sender_cnic, 'CNIC:', shipment.receiver_cnic],
+            ['Phone:', shipment.sender_phone, 'Phone:', shipment.receiver_phone],
+            ['Address:', shipment.sender_address, 'Address:', shipment.receiver_address],
+            ['Postal Code:', shipment.sender_postal_code, 'Postal Code:', shipment.receiver_postal_code]
+        ]
+
+        table = Table(sender_receiver_data, colWidths=[100, 200, 100, 200])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        slip_content.append(table)
+        slip_content.append(Spacer(1, 20))
+
+        # Package Details
+        slip_content.append(Paragraph('Package Details', styles['Heading3']))
+
+        # Different package details for parcel label vs other slips
+        if slip_type == 'parcel':
+            # Parcel label - minimal info, no pricing
+            package_data = [
+                ['Weight (kg):', f"{shipment.chargeable_weight:.2f}"],
+                ['Dimensions (cm):', f"{shipment.length}×{shipment.width}×{shipment.height}"],
+                ['Destination:', shipment.destination_country.name]
+            ]
+        else:
+            # Sender and Courier copies - full details with pricing
+            package_data = [
+                ['Length (cm):', str(shipment.length)],
+                ['Width (cm):', str(shipment.width)],
+                ['Height (cm):', str(shipment.height)],
+                ['Actual Weight (kg):', str(shipment.actual_weight)],
+                ['Volumetric Weight (kg):', f"{shipment.volumetric_weight:.2f}"],
+                ['Chargeable Weight (kg):', f"{shipment.chargeable_weight:.2f}"],
+                ['Weight Type:', shipment.weight_type.title()]
+            ]
+
+        package_table = Table(package_data, colWidths=[150, 100])
+        package_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.lightblue),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        slip_content.append(package_table)
+        slip_content.append(Spacer(1, 20))
+
+        # Pricing Details (only for sender and courier copies, not parcel label)
+        if slip_type != 'parcel':
+            slip_content.append(Paragraph('Pricing Details', styles['Heading3']))
+            pricing_data = [
+                ['Base Price:', f"{shipment.destination_country.currency} {shipment.base_price:.2f}"],
+                ['GST (18%):', f"{shipment.destination_country.currency} {shipment.gst_amount:.2f}"],
+                ['Final Price:', f"{shipment.destination_country.currency} {shipment.final_price:.2f}"]
+            ]
+
+            pricing_table = Table(pricing_data, colWidths=[150, 100])
+            pricing_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), colors.lightgreen),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('FONTNAME', (-1, 0), (-1, -1), 'Helvetica-Bold')
+            ]))
+            slip_content.append(pricing_table)
+            slip_content.append(Spacer(1, 30))
+
+        # Footer
+        slip_content.append(Paragraph(f'Date: {shipment.created_at.strftime("%Y-%m-%d %H:%M")}', styles['Normal']))
+        slip_content.append(Paragraph('Thank you for choosing PICS!', styles['Italic']))
+
+        return slip_content
+
+    # Add all three slips
+    content.extend(create_slip_content('sender', 'SENDER COPY', colors.blue))
+    content.append(PageBreak())
+    content.extend(create_slip_content('courier', 'COURIER OFFICE COPY', colors.green))
+    content.append(PageBreak())
+    content.extend(create_slip_content('parcel', 'PARCEL LABEL', colors.purple))
+
+    doc.build(content)
+
+    buffer.seek(0)
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f'shipment-slips-{shipment.tracking_id}.pdf',
+        mimetype='application/pdf'
+    )
 
 @app.route('/shipment/<int:shipment_id>/download-receipt')
 @login_required
@@ -952,6 +1091,17 @@ def export_all_shipments():
         headers={'Content-disposition': 'attachment; filename=all_shipments.csv'}
     )
 
+@app.route('/admin/cleanup-duplicates')
+@login_required
+def cleanup_duplicates():
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('dashboard'))
+
+    cleanup_duplicate_tracking_ids()
+    flash('Duplicate tracking IDs have been cleaned up!', 'success')
+    return redirect(url_for('admin_shipments'))
+
 # Helper Functions
 def calculate_pricing(country_id, length, width, height, weight, weight_type):
     try:
@@ -1000,17 +1150,50 @@ def generate_tracking_id():
     # Get day of month
     day = now.strftime('%d')
 
-    # Get current count for today to ensure uniqueness
-    today = now.date()
-    today_shipments = Shipment.query.filter(
-        db.func.date(Shipment.created_at) == today
-    ).count()
+    # Find the highest sequential number for today
+    today_start = datetime.combine(now.date(), datetime.min.time())
+    today_end = datetime.combine(now.date(), datetime.max.time())
 
-    # Generate sequential number (001, 002, etc.)
-    sequential_num = today_shipments + 1
+    # Get existing tracking IDs for today with proper pattern
+    existing_shipments = Shipment.query.filter(
+        Shipment.created_at >= today_start,
+        Shipment.created_at <= today_end,
+        Shipment.tracking_id.like(f'EX-{month_abbr}-{day}-%')
+    ).all()
+
+    # Find the highest sequential number used today
+    max_sequential = 0
+    for shipment in existing_shipments:
+        tracking_parts = shipment.tracking_id.split('-')
+        if len(tracking_parts) == 4:
+            try:
+                seq_num = int(tracking_parts[3])
+                max_sequential = max(max_sequential, seq_num)
+            except (ValueError, IndexError):
+                continue
+
+    # Generate next sequential number
+    sequential_num = max_sequential + 1
     sequential_str = f"{sequential_num:03d}"
 
-    return f"EX-{month_abbr}-{day}-{sequential_str}"
+    tracking_id = f"EX-{month_abbr}-{day}-{sequential_str}"
+
+    # Double-check that this tracking ID doesn't already exist
+    existing_count = Shipment.query.filter_by(tracking_id=tracking_id).count()
+    if existing_count > 0:
+        # If it exists, try incrementing until we find a unique one
+        while existing_count > 0:
+            sequential_num += 1
+            sequential_str = f"{sequential_num:03d}"
+            tracking_id = f"EX-{month_abbr}-{day}-{sequential_str}"
+            existing_count = Shipment.query.filter_by(tracking_id=tracking_id).count()
+
+    # Debug: Print information about the generation
+    print(f"DEBUG: Generated tracking ID: {tracking_id}")
+    print(f"DEBUG: Max sequential found: {max_sequential}")
+    print(f"DEBUG: Existing shipments today: {len(existing_shipments)}")
+
+    return tracking_id
 
 def update_daily_records():
     """Update daily records for today and yesterday if needed"""
@@ -1111,6 +1294,38 @@ def generate_shipment_analytics(shipment_id):
     db.session.commit()
     return analytics
 
+def cleanup_duplicate_tracking_ids():
+    """Clean up duplicate tracking IDs in the database"""
+    from sqlalchemy import text
+
+    # Find all duplicate tracking IDs
+    duplicates = db.session.execute(
+        text("""
+        SELECT tracking_id, COUNT(*) as count
+        FROM shipment
+        GROUP BY tracking_id
+        HAVING COUNT(*) > 1
+        """)
+    ).fetchall()
+
+    if duplicates:
+        print(f"Found {len(duplicates)} duplicate tracking IDs:")
+        for tracking_id, count in duplicates:
+            print(f"  {tracking_id}: {count} occurrences")
+
+        # Remove duplicates, keeping only the first occurrence
+        for tracking_id, count in duplicates:
+            shipments = Shipment.query.filter_by(tracking_id=tracking_id).order_by(Shipment.id).all()
+            # Keep the first one, delete the rest
+            for shipment in shipments[1:]:
+                print(f"  Deleting duplicate shipment ID {shipment.id} with tracking ID {tracking_id}")
+                db.session.delete(shipment)
+
+        db.session.commit()
+        print("Duplicate cleanup completed!")
+    else:
+        print("No duplicate tracking IDs found.")
+
 def load_sample_pricing_data():
     """Load sample pricing data from CSV file"""
     try:
@@ -1185,6 +1400,9 @@ def create_tables():
 # Create tables when app starts
 with app.app_context():
     create_tables()
+
+    # Clean up any duplicate tracking IDs
+    cleanup_duplicate_tracking_ids()
 
     # Load sample pricing data if no countries exist
     if Country.query.count() == 0:

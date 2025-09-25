@@ -1,0 +1,552 @@
+{% extends 'base.html' %}
+
+{% block title %}Shipment Slip - {{ shipment.tracking_id }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-8 bg-gray-100">
+    <div class="max-w-6xl mx-auto px-4">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Shipment Slip</h1>
+            <p class="text-gray-600">Tracking ID: <span class="font-mono font-bold text-lg">{{ shipment.tracking_id }}</span></p>
+            <p class="text-sm text-gray-500 mt-2">Print this slip for your records</p>
+        </div>
+
+        <!-- Print Options -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Shipment Slips - All Copies</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <button onclick="printSlip('sender')" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+                    <i class="fas fa-print mr-2"></i>
+                    Print Sender Copy
+                </button>
+                <button onclick="printSlip('courier')" class="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors">
+                    <i class="fas fa-print mr-2"></i>
+                    Print Courier Copy
+                </button>
+                <button onclick="printSlip('parcel')" class="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
+                    <i class="fas fa-print mr-2"></i>
+                    Print Parcel Label
+                </button>
+            </div>
+            <div class="text-center">
+                <a href="{{ url_for('download_all_slips', shipment_id=shipment.id) }}" class="bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors inline-block">
+                    <i class="fas fa-download mr-2"></i>
+                    Download All Slips (PDF)
+                </a>
+            </div>
+        </div>
+
+        <!-- All Slips Container -->
+        <div id="slips-container" class="space-y-8">
+            <!-- Sender Copy -->
+            <div id="sender-slip" class="slip bg-white border-2 border-blue-200 rounded-lg p-6 shadow-lg">
+                <!-- Header with Logo -->
+                <div class="text-center mb-6 pb-4 border-b-2 border-blue-200">
+                    <div class="flex items-center justify-center mb-3">
+                        <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-3 rounded-lg mr-3">
+                            <i class="fas fa-shipping-fast text-2xl text-white"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">PICS</h1>
+                            <p class="text-sm text-gray-600">Courier Services</p>
+                        </div>
+                    </div>
+                    <div class="bg-blue-100 text-blue-800 px-4 py-2 rounded-full inline-block">
+                        <span class="font-bold text-lg">SENDER COPY</span>
+                    </div>
+                </div>
+
+                <!-- Tracking Information -->
+                <div class="grid grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <h3 class="font-semibold text-gray-900 mb-2 text-base">TRACKING ID</h3>
+                        <div class="text-2xl font-bold font-mono text-blue-600 mb-3">{{ shipment.tracking_id }}</div>
+                        <!-- Barcode -->
+                        <div class="mt-3">
+                            <canvas id="barcode-sender" class="border border-gray-300 mx-auto block" style="height: 50px; width: 200px;"></canvas>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 mb-2 text-base">BOOKING DATE</h3>
+                        <div class="text-lg font-semibold text-gray-700">{{ shipment.created_at.strftime('%d/%m/%Y') }}</div>
+                        <div class="text-base text-gray-600">{{ shipment.created_at.strftime('%I:%M %p') }}</div>
+                    </div>
+                </div>
+
+                <!-- Sender & Receiver Info -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <!-- From -->
+                    <div class="border-2 border-green-200 rounded-lg p-4 bg-green-50">
+                        <h3 class="font-bold text-green-600 mb-3 text-center text-base">FROM (SENDER)</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <strong>Name:</strong>
+                                <span>{{ shipment.sender_name }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>Phone:</strong>
+                                <span>{{ shipment.sender_phone }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>CNIC:</strong>
+                                <span>{{ shipment.sender_cnic }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>Address:</strong>
+                                <span>{{ shipment.sender_address }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>Postal Code:</strong>
+                                <span>{{ shipment.sender_postal_code }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- To -->
+                    <div class="border-2 border-red-200 rounded-lg p-4 bg-red-50">
+                        <h3 class="font-bold text-red-600 mb-3 text-center text-base">TO (RECEIVER)</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <strong>Name:</strong>
+                                <span>{{ shipment.receiver_name }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>Phone:</strong>
+                                <span>{{ shipment.receiver_phone }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>CNIC:</strong>
+                                <span>{{ shipment.receiver_cnic }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>Address:</strong>
+                                <span>{{ shipment.receiver_address }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>Postal Code:</strong>
+                                <span>{{ shipment.receiver_postal_code }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Package Info -->
+                <div class="border-2 border-purple-200 rounded-lg p-4 mb-6 bg-purple-50">
+                    <h3 class="font-bold text-purple-600 mb-3 text-center text-base">PACKAGE DETAILS</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div class="text-center">
+                            <strong class="text-purple-700">Weight:</strong><br>
+                            <span class="text-base font-semibold">{{ "%.2f"|format(shipment.chargeable_weight) }} kg</span>
+                        </div>
+                        <div class="text-center">
+                            <strong class="text-purple-700">Dimensions:</strong><br>
+                            <span class="text-base font-semibold">{{ shipment.length }}×{{ shipment.width }}×{{ shipment.height }} cm</span>
+                        </div>
+                        <div class="text-center">
+                            <strong class="text-purple-700">Destination:</strong><br>
+                            <span class="text-base font-semibold">{{ shipment.destination_country.name }}</span>
+                        </div>
+                        <div class="text-center">
+                            <strong class="text-purple-700">Amount:</strong><br>
+                            <span class="text-base font-semibold">{{ shipment.destination_country.currency }} {{ "%.2f"|format(shipment.final_price) }}</span>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-center">
+                        <span class="font-medium text-xs">Weight Type:</span>
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ml-2
+                            {% if shipment.weight_type == 'actual' %}bg-blue-100 text-blue-800
+                            {% else %}bg-green-100 text-green-800{% endif %}">
+                            {{ shipment.weight_type.title() }} Weight
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="text-center text-xs text-gray-600 border-t-2 border-blue-200 pt-4">
+                    <p class="mb-1"><strong>Customer Service:</strong> +92-XXX-XXXXXXX</p>
+                    <p class="mb-1"><strong>Website:</strong> www.picscourier.com</p>
+                    <p class="mt-2 text-xs font-medium">Keep this slip for your records. Track your shipment online.</p>
+                </div>
+            </div>
+
+            <!-- Courier Office Copy -->
+            <div id="courier-slip" class="slip bg-white border-2 border-green-200 rounded-lg p-6 shadow-lg">
+                <!-- Header with Logo -->
+                <div class="text-center mb-6 pb-4 border-b-2 border-green-200">
+                    <div class="flex items-center justify-center mb-3">
+                        <div class="bg-gradient-to-r from-green-600 to-blue-600 p-3 rounded-lg mr-3">
+                            <i class="fas fa-shipping-fast text-2xl text-white"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">PICS</h1>
+                            <p class="text-sm text-gray-600">Courier Services</p>
+                        </div>
+                    </div>
+                    <div class="bg-green-100 text-green-800 px-4 py-2 rounded-full inline-block">
+                        <span class="font-bold text-lg">COURIER OFFICE COPY</span>
+                    </div>
+                </div>
+
+                <!-- Tracking Information -->
+                <div class="grid grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <h3 class="font-semibold text-gray-900 mb-2 text-base">TRACKING ID</h3>
+                        <div class="text-2xl font-bold font-mono text-green-600 mb-3">{{ shipment.tracking_id }}</div>
+                        <!-- Barcode -->
+                        <div class="mt-3">
+                            <canvas id="barcode-courier" class="border border-gray-300 mx-auto block" style="height: 50px; width: 200px;"></canvas>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 mb-2 text-base">BOOKING DATE</h3>
+                        <div class="text-lg font-semibold text-gray-700">{{ shipment.created_at.strftime('%d/%m/%Y') }}</div>
+                        <div class="text-base text-gray-600">{{ shipment.created_at.strftime('%I:%M %p') }}</div>
+                    </div>
+                </div>
+
+                <!-- Sender & Receiver Info -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <!-- From -->
+                    <div class="border-2 border-green-200 rounded-lg p-4 bg-green-50">
+                        <h3 class="font-bold text-green-600 mb-3 text-center text-base">FROM (SENDER)</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <strong>Name:</strong>
+                                <span>{{ shipment.sender_name }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>Phone:</strong>
+                                <span>{{ shipment.sender_phone }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>CNIC:</strong>
+                                <span>{{ shipment.sender_cnic }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>Address:</strong>
+                                <span>{{ shipment.sender_address }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>Postal Code:</strong>
+                                <span>{{ shipment.sender_postal_code }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- To -->
+                    <div class="border-2 border-red-200 rounded-lg p-4 bg-red-50">
+                        <h3 class="font-bold text-red-600 mb-3 text-center text-base">TO (RECEIVER)</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <strong>Name:</strong>
+                                <span>{{ shipment.receiver_name }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>Phone:</strong>
+                                <span>{{ shipment.receiver_phone }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>CNIC:</strong>
+                                <span>{{ shipment.receiver_cnic }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>Address:</strong>
+                                <span>{{ shipment.receiver_address }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>Postal Code:</strong>
+                                <span>{{ shipment.receiver_postal_code }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Package Info -->
+                <div class="border-2 border-purple-200 rounded-lg p-4 mb-6 bg-purple-50">
+                    <h3 class="font-bold text-purple-600 mb-3 text-center text-base">PACKAGE DETAILS</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div class="text-center">
+                            <strong class="text-purple-700">Weight:</strong><br>
+                            <span class="text-base font-semibold">{{ "%.2f"|format(shipment.chargeable_weight) }} kg</span>
+                        </div>
+                        <div class="text-center">
+                            <strong class="text-purple-700">Dimensions:</strong><br>
+                            <span class="text-base font-semibold">{{ shipment.length }}×{{ shipment.width }}×{{ shipment.height }} cm</span>
+                        </div>
+                        <div class="text-center">
+                            <strong class="text-purple-700">Destination:</strong><br>
+                            <span class="text-base font-semibold">{{ shipment.destination_country.name }}</span>
+                        </div>
+                        <div class="text-center">
+                            <strong class="text-purple-700">Amount:</strong><br>
+                            <span class="text-base font-semibold">{{ shipment.destination_country.currency }} {{ "%.2f"|format(shipment.final_price) }}</span>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-center">
+                        <span class="font-medium text-xs">Weight Type:</span>
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ml-2
+                            {% if shipment.weight_type == 'actual' %}bg-blue-100 text-blue-800
+                            {% else %}bg-green-100 text-green-800{% endif %}">
+                            {{ shipment.weight_type.title() }} Weight
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="text-center text-xs text-gray-600 border-t-2 border-green-200 pt-4">
+                    <p class="mb-1"><strong>Customer Service:</strong> +92-XXX-XXXXXXX</p>
+                    <p class="mb-1"><strong>Website:</strong> www.picscourier.com</p>
+                    <p class="mt-2 text-xs font-medium">For internal use only. Keep this copy in office records.</p>
+                </div>
+            </div>
+
+            <!-- Parcel Label -->
+            <div id="parcel-slip" class="slip bg-white border-2 border-purple-200 rounded-lg p-6 shadow-lg">
+                <!-- Header with Logo -->
+                <div class="text-center mb-4 pb-3 border-b-2 border-purple-200">
+                    <div class="flex items-center justify-center mb-2">
+                        <div class="bg-gradient-to-r from-purple-600 to-pink-600 p-2 rounded-lg mr-2">
+                            <i class="fas fa-shipping-fast text-xl text-white"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-bold text-gray-900">PICS</h1>
+                            <p class="text-xs text-gray-600">Courier Services</p>
+                        </div>
+                    </div>
+                    <div class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full inline-block">
+                        <span class="font-bold text-sm">PARCEL LABEL</span>
+                    </div>
+                </div>
+
+                <!-- Tracking ID Large -->
+                <div class="text-center mb-4">
+                    <div class="text-3xl font-bold font-mono text-purple-600 mb-2">{{ shipment.tracking_id }}</div>
+                    <div class="text-sm text-gray-600 mb-3">TRACKING ID</div>
+                    <!-- Barcode -->
+                    <div class="mt-3">
+                        <canvas id="barcode-parcel" class="border border-gray-300 mx-auto block" style="height: 40px; width: 250px;"></canvas>
+                    </div>
+                </div>
+
+                <!-- Compact Sender & Receiver Info -->
+                <div class="grid grid-cols-1 gap-4 mb-4">
+                    <!-- From -->
+                    <div class="border-2 border-green-200 rounded-lg p-3 bg-green-50">
+                        <h3 class="font-bold text-green-600 mb-2 text-center text-sm">FROM (SENDER)</h3>
+                        <div class="space-y-1 text-xs">
+                            <div class="flex justify-between">
+                                <strong>Name:</strong>
+                                <span>{{ shipment.sender_name }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>Phone:</strong>
+                                <span>{{ shipment.sender_phone }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>Address:</strong>
+                                <span>{{ shipment.sender_address }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- To -->
+                    <div class="border-2 border-red-200 rounded-lg p-3 bg-red-50">
+                        <h3 class="font-bold text-red-600 mb-2 text-center text-sm">TO (RECEIVER)</h3>
+                        <div class="space-y-1 text-xs">
+                            <div class="flex justify-between">
+                                <strong>Name:</strong>
+                                <span>{{ shipment.receiver_name }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>Phone:</strong>
+                                <span>{{ shipment.receiver_phone }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <strong>Address:</strong>
+                                <span>{{ shipment.receiver_address }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Package Info -->
+                <div class="border-2 border-purple-200 rounded-lg p-3 mb-4 bg-purple-50">
+                    <h3 class="font-bold text-purple-600 mb-2 text-center text-sm">PACKAGE DETAILS</h3>
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div class="text-center">
+                            <strong class="text-purple-700">Weight:</strong><br>
+                            <span class="text-sm font-semibold">{{ "%.2f"|format(shipment.chargeable_weight) }} kg</span>
+                        </div>
+                        <div class="text-center">
+                            <strong class="text-purple-700">Dimensions:</strong><br>
+                            <span class="text-sm font-semibold">{{ shipment.length }}×{{ shipment.width }}×{{ shipment.height }} cm</span>
+                        </div>
+                        <div class="text-center">
+                            <strong class="text-purple-700">Destination:</strong><br>
+                            <span class="text-sm font-semibold">{{ shipment.destination_country.name }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="text-center text-xs text-gray-600 border-t-2 border-purple-200 pt-3">
+                    <p class="mb-1"><strong>PICS Courier Services</strong></p>
+                    <p class="mb-1">www.pakinternationalcourierservice.com | +92-XXX-XXXXXXX</p>
+                    <p class="mt-2 text-xs font-medium">Affix this label to your parcel</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="mt-8 text-center">
+            <a href="{{ url_for('dashboard') }}" class="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700">
+                <i class="fas fa-tachometer-alt mr-2"></i>
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    body {
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    /* Vertical layout adjustments for print */
+    #slips-container {
+        display: block !important;
+    }
+
+    .slip {
+        border: 2px solid #000 !important;
+        margin: 0 !important;
+        padding: 20px !important;
+        page-break-after: always !important;
+        box-shadow: none !important;
+        width: 100% !important;
+        max-width: none !important;
+    }
+
+    .slip:last-child {
+        page-break-after: auto !important;
+    }
+
+    /* Hide slips that aren't selected for printing */
+    .slip:not(.print-selected) {
+        display: none !important;
+    }
+
+    .bg-blue-600, .bg-green-600, .bg-purple-600 {
+        background-color: #000 !important;
+        color: white !important;
+    }
+
+    .text-blue-600, .text-green-600, .text-purple-600 {
+        color: #000 !important;
+    }
+
+    .border-blue-200, .border-green-200, .border-purple-200 {
+        border-color: #000 !important;
+    }
+
+    .bg-blue-100, .bg-green-100, .bg-purple-100 {
+        background-color: #f0f0f0 !important;
+    }
+
+    .bg-green-50, .bg-red-50, .bg-purple-50 {
+        background-color: #f9f9f9 !important;
+    }
+
+    .text-blue-800, .text-green-800, .text-purple-800 {
+        color: #000 !important;
+    }
+
+    .text-green-600, .text-red-600, .text-purple-600 {
+        color: #000 !important;
+    }
+
+    .text-purple-700 {
+        color: #000 !important;
+    }
+}
+</style>
+
+<script>
+function printSlip(type) {
+    // Hide all slips except the selected type
+    const slips = document.querySelectorAll('.slip');
+    slips.forEach(slip => {
+        if (slip.id === type + '-slip') {
+            slip.style.display = 'block';
+        } else {
+            slip.style.display = 'none';
+        }
+    });
+
+    // Print the selected slip
+    setTimeout(() => {
+        window.print();
+    }, 100);
+
+    // Restore all slips after printing
+    setTimeout(() => {
+        slips.forEach(slip => {
+            slip.style.display = 'block';
+        });
+    }, 1500);
+}
+
+// Generate barcode for tracking ID
+function generateBarcode(canvasId, text) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // Set barcode properties
+    ctx.fillStyle = '#000';
+    const barWidth = 2;
+    const spaceWidth = 1;
+    const totalBarWidth = (barWidth + spaceWidth) * text.length;
+
+    // Calculate starting position to center the barcode
+    const startX = (width - totalBarWidth) / 2;
+
+    // Draw barcode lines
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const barHeight = char >= 'A' && char <= 'Z' ? height - 8 : height - 15;
+        const x = startX + i * (barWidth + spaceWidth);
+
+        ctx.fillRect(x, height - barHeight, barWidth, barHeight);
+    }
+
+    // Add text below barcode
+    ctx.fillStyle = '#000';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(text, width / 2, height - 2);
+}
+
+// Initialize barcodes when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    const trackingId = '{{ shipment.tracking_id }}';
+    generateBarcode('barcode-sender', trackingId);
+    generateBarcode('barcode-courier', trackingId);
+    generateBarcode('barcode-parcel', trackingId);
+});
+</script>
+{% endblock %}

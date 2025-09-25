@@ -135,7 +135,7 @@ Final Price = Base Price + GST
 
 To run in development mode:
 ```bash
-python main.py
+python app.py
 ```
 
 The application will start on `http://localhost:5000` with debug mode enabled.
@@ -156,6 +156,5 @@ For issues or questions:
 4. Check file permissions for uploads directory
 
 ## License
-
 
 This project is created for demonstration purposes.
