@@ -113,6 +113,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receiver</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destination</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Undertaking</th>
@@ -145,6 +146,13 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm text-gray-900">{{ "%.2f"|format(shipment.chargeable_weight) }} kg</div>
                                 <div class="text-sm text-gray-500">{{ shipment.weight_type.title() }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                    {% if shipment.document_type == 'docs' %}bg-purple-100 text-purple-800
+                                    {% else %}bg-orange-100 text-orange-800{% endif %}">
+                                    {{ 'Documents' if shipment.document_type == 'docs' else 'Non-Documents' }}
+                                </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-medium text-green-600">{{ shipment.destination_country.currency }} {{ "%.2f"|format(shipment.final_price) }}</div>

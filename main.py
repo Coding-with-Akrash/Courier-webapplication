@@ -101,6 +101,7 @@ class Shipment(db.Model):
     height = db.Column(db.Float, nullable=False)
     actual_weight = db.Column(db.Float, nullable=False)
     weight_type = db.Column(db.String(20), nullable=False)  # 'actual' or 'volumetric'
+    document_type = db.Column(db.String(20), nullable=False, default='non_docs')  # 'docs' or 'non_docs'
 
     # Pricing Information
     volumetric_weight = db.Column(db.Float, nullable=False)
@@ -180,9 +181,6 @@ class RegistrationForm(FlaskForm):
         if client:
             raise ValidationError('CNIC already registered.')
 
-    def validate_undertaking_accepted(self, undertaking_accepted):
-        if not undertaking_accepted.data:
-            raise ValidationError('You must accept the Terms and Conditions to proceed with the shipment.')
 
 class ShipmentForm(FlaskForm):
     # Sender Information
@@ -206,9 +204,10 @@ class ShipmentForm(FlaskForm):
     height = FloatField('Height (cm)', validators=[DataRequired()])
     actual_weight = FloatField('Actual Weight (kg)', validators=[DataRequired()])
     weight_type = SelectField('Weight Type', choices=[('actual', 'Actual Weight'), ('volumetric', 'Volumetric Weight')], validators=[DataRequired()])
+    document_type = SelectField('Package Type', choices=[('docs', 'Documents'), ('non_docs', 'Non-Documents')], validators=[DataRequired()])
 
     # Undertaking
-    undertaking_accepted = BooleanField('I accept the Terms and Conditions')
+    undertaking_accepted = BooleanField('I accept the Terms and Conditions', validators=[Optional()])
     undertaking_text = TextAreaField('Special Instructions (Optional)', validators=[Optional()])
 
 class PricingUploadForm(FlaskForm):
@@ -336,6 +335,7 @@ def book_shipment():
             height=form.height.data,
             actual_weight=form.actual_weight.data,
             weight_type=form.weight_type.data,
+            document_type=form.document_type.data,
             volumetric_weight=pricing_data['volumetric_weight'],
             chargeable_weight=pricing_data['chargeable_weight'],
             base_price=pricing_data['base_price'],
@@ -460,7 +460,8 @@ def download_all_slips(shipment_id):
             package_data = [
                 ['Weight (kg):', f"{shipment.chargeable_weight:.2f}"],
                 ['Dimensions (cm):', f"{shipment.length}×{shipment.width}×{shipment.height}"],
-                ['Destination:', shipment.destination_country.name]
+                ['Destination:', shipment.destination_country.name],
+                ['Package Type:', 'Documents' if shipment.document_type == 'docs' else 'Non-Documents']
             ]
         else:
             # Sender and Courier copies - full details with pricing
@@ -471,7 +472,8 @@ def download_all_slips(shipment_id):
                 ['Actual Weight (kg):', str(shipment.actual_weight)],
                 ['Volumetric Weight (kg):', f"{shipment.volumetric_weight:.2f}"],
                 ['Chargeable Weight (kg):', f"{shipment.chargeable_weight:.2f}"],
-                ['Weight Type:', shipment.weight_type.title()]
+                ['Weight Type:', shipment.weight_type.title()],
+                ['Package Type:', 'Documents' if shipment.document_type == 'docs' else 'Non-Documents']
             ]
 
         package_table = Table(package_data, colWidths=[150, 100])
@@ -586,7 +588,8 @@ def download_receipt(shipment_id):
         ['Actual Weight (kg):', str(shipment.actual_weight)],
         ['Volumetric Weight (kg):', f"{shipment.volumetric_weight:.2f}"],
         ['Chargeable Weight (kg):', f"{shipment.chargeable_weight:.2f}"],
-        ['Weight Type:', shipment.weight_type.title()]
+        ['Weight Type:', shipment.weight_type.title()],
+        ['Package Type:', 'Documents' if shipment.document_type == 'docs' else 'Non-Documents']
     ]
 
     package_table = Table(package_data, colWidths=[150, 100])
@@ -1060,7 +1063,7 @@ def export_all_shipments():
     writer.writerow([
         'Tracking ID', 'Client Name', 'Client Email', 'Sender Name', 'Sender Phone',
         'Receiver Name', 'Receiver Phone', 'Destination Country', 'Weight (kg)',
-        'Weight Type', 'Final Price', 'Status', 'Undertaking Accepted',
+        'Weight Type', 'Package Type', 'Final Price', 'Status', 'Undertaking Accepted',
         'Special Instructions', 'Created At'
     ])
 
@@ -1077,6 +1080,7 @@ def export_all_shipments():
             country.name,
             f"{shipment.chargeable_weight:.2f}",
             shipment.weight_type.title(),
+            'Documents' if shipment.document_type == 'docs' else 'Non-Documents',
             f"{shipment.final_price:.2f}",
             shipment.status.title(),
             'Yes' if shipment.undertaking_accepted else 'No',
