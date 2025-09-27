@@ -14,21 +14,7 @@
 
         <!-- Print Options -->
         <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
-            <h2 class="text-xl font-semibold mb-4">Shipment Slips - All Copies</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <button onclick="printSlip('sender')" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
-                    <i class="fas fa-print mr-2"></i>
-                    Print Sender Copy
-                </button>
-                <button onclick="printSlip('courier')" class="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors">
-                    <i class="fas fa-print mr-2"></i>
-                    Print Courier Copy
-                </button>
-                <button onclick="printSlip('parcel')" class="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
-                    <i class="fas fa-print mr-2"></i>
-                    Print Parcel Label
-                </button>
-            </div>
+            <h2 class="text-xl font-semibold mb-4">Shipment Slips</h2>
             <div class="text-center">
                 <a href="{{ url_for('download_all_slips', shipment_id=shipment.id) }}" class="bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors inline-block">
                     <i class="fas fa-download mr-2"></i>
@@ -424,6 +410,10 @@
 
         <!-- Action Buttons -->
         <div class="mt-8 text-center">
+            <a href="{{ url_for('print_undertaking', shipment_id=shipment.id) }}" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 mr-4">
+                <i class="fas fa-print mr-2"></i>
+                Print Undertaking
+            </a>
             <a href="{{ url_for('dashboard') }}" class="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700">
                 <i class="fas fa-tachometer-alt mr-2"></i>
                 Back to Dashboard

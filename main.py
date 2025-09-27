@@ -19,11 +19,13 @@ from reportlab.lib import colors
 import csv
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///courier.db'
+
+# Load configuration from environment variables
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or f'sqlite:///{os.path.join(os.getcwd(), "instance", "courier.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', 'uploads')
+app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', '16777216'))  # 16MB max file size
 
 db = SQLAlchemy(app)
 login_manager = LoginManager()
@@ -522,6 +524,379 @@ def download_all_slips(shipment_id):
         buffer,
         as_attachment=True,
         download_name=f'shipment-slips-{shipment.tracking_id}.pdf',
+        mimetype='application/pdf'
+    )
+
+@app.route('/shipment/<int:shipment_id>/update-status', methods=['POST'])
+@login_required
+def update_shipment_status(shipment_id):
+    """Update shipment status"""
+    shipment = Shipment.query.get_or_404(shipment_id)
+
+    # Check if user owns the shipment or is admin
+    if shipment.client_id != current_user.id and not current_user.is_admin:
+        return jsonify({'error': 'Access denied.'}), 403
+
+    new_status = request.json.get('status')
+    if not new_status:
+        return jsonify({'error': 'Status is required.'}), 400
+
+    # Valid status options
+    valid_statuses = ['booked', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled']
+    if new_status not in valid_statuses:
+        return jsonify({'error': 'Invalid status.'}), 400
+
+    try:
+        old_status = shipment.status
+        shipment.status = new_status
+        db.session.commit()
+
+        # Update analytics if status changed to delivered
+        if new_status == 'delivered' and old_status != 'delivered':
+            analytics = ShipmentAnalytics.query.filter_by(shipment_id=shipment_id).first()
+            if analytics:
+                from datetime import datetime
+                analytics.processing_time = (datetime.utcnow() - shipment.created_at).total_seconds() / 3600
+                analytics.delivery_status = 'delivered'
+                db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'Shipment status updated to {new_status.title()}',
+            'new_status': new_status
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to update status: {str(e)}'}), 500
+
+
+@app.route('/search-shipments', methods=['GET', 'POST'])
+@login_required
+def search_shipments():
+    """Search shipments with filters and status update functionality"""
+    search_query = request.args.get('search', '')
+    status_filter = request.args.get('status', '')
+    country_filter = request.args.get('country', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+
+    # Build query based on user role
+    if current_user.is_admin:
+        query = Shipment.query.join(Client).join(Country)
+    else:
+        query = Shipment.query.join(Country).filter(Shipment.client_id == current_user.id)
+
+    # Apply filters
+    if search_query:
+        query = query.filter(
+            db.or_(
+                Shipment.tracking_id.ilike(f'%{search_query}%'),
+                Client.name.ilike(f'%{search_query}%'),
+                Shipment.sender_name.ilike(f'%{search_query}%'),
+                Shipment.receiver_name.ilike(f'%{search_query}%')
+            )
+        )
+
+    if status_filter:
+        query = query.filter(Shipment.status == status_filter)
+
+    if country_filter:
+        query = query.filter(Shipment.destination_country_id == country_filter)
+
+    # Get pagination
+    shipments_paginated = query.order_by(Shipment.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    # Get filter options
+    countries = Country.query.filter_by(is_active=True).all()
+    statuses = ['booked', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled']
+
+    # Calculate summary statistics
+    total_shipments = query.count()
+    total_revenue = query.with_entities(db.func.sum(Shipment.final_price)).scalar() or 0
+    total_weight = query.with_entities(db.func.sum(Shipment.chargeable_weight)).scalar() or 0
+
+    return render_template('search_shipments.html',
+                         shipments=shipments_paginated.items,
+                         pagination=shipments_paginated,
+                         countries=countries,
+                         statuses=statuses,
+                         search_query=search_query,
+                         status_filter=status_filter,
+                         country_filter=country_filter,
+                         total_shipments=total_shipments,
+                         total_revenue=total_revenue,
+                         total_weight=total_weight)
+
+
+@app.route('/shipment/<int:shipment_id>/book-similar', methods=['GET', 'POST'])
+@login_required
+def book_similar_shipment(shipment_id):
+    """Book a new shipment with same sender information"""
+    # Get the original shipment to copy sender info
+    original_shipment = Shipment.query.get_or_404(shipment_id)
+
+    # Check if user owns the shipment or is admin
+    if original_shipment.client_id != current_user.id and not current_user.is_admin:
+        flash('Access denied.', 'error')
+        return redirect(url_for('dashboard'))
+
+    form = ShipmentForm()
+    countries = Country.query.filter_by(is_active=True).all()
+    form.destination_country.choices = [(str(c.id), f"{c.name} ({c.currency})") for c in countries]
+
+    if request.method == 'GET':
+        # Pre-fill form with sender information from original shipment
+        form.sender_name.data = original_shipment.sender_name
+        form.sender_phone.data = original_shipment.sender_phone
+        form.sender_cnic.data = original_shipment.sender_cnic
+        form.sender_address.data = original_shipment.sender_address
+        form.sender_postal_code.data = original_shipment.sender_postal_code
+
+        # Set default destination to same as original shipment
+        form.destination_country.data = str(original_shipment.destination_country_id)
+
+    if form.validate_on_submit():
+        # Calculate pricing
+        pricing_data = calculate_pricing(
+            form.destination_country.data,
+            form.length.data,
+            form.width.data,
+            form.height.data,
+            form.actual_weight.data,
+            form.weight_type.data
+        )
+
+        if 'error' in pricing_data:
+            flash(pricing_data['error'], 'error')
+            return render_template('book_shipment.html', form=form)
+
+        # Generate tracking ID
+        tracking_id = generate_tracking_id()
+
+        # Create new shipment with same sender info but new receiver/package info
+        shipment = Shipment(
+            tracking_id=tracking_id,
+            client_id=current_user.id,
+            sender_name=form.sender_name.data,
+            sender_phone=form.sender_phone.data,
+            sender_cnic=form.sender_cnic.data,
+            sender_address=form.sender_address.data,
+            sender_postal_code=form.sender_postal_code.data,
+            receiver_name=form.receiver_name.data,
+            receiver_phone=form.receiver_phone.data,
+            receiver_cnic=form.receiver_cnic.data,
+            receiver_address=form.receiver_address.data,
+            receiver_postal_code=form.receiver_postal_code.data,
+            destination_country_id=form.destination_country.data,
+            length=form.length.data,
+            width=form.width.data,
+            height=form.height.data,
+            actual_weight=form.actual_weight.data,
+            weight_type=form.weight_type.data,
+            document_type=form.document_type.data,
+            volumetric_weight=pricing_data['volumetric_weight'],
+            chargeable_weight=pricing_data['chargeable_weight'],
+            base_price=pricing_data['base_price'],
+            gst_amount=pricing_data['gst_amount'],
+            final_price=pricing_data['final_price'],
+            undertaking_accepted=form.undertaking_accepted.data,
+            undertaking_text=form.undertaking_text.data or None
+        )
+
+        db.session.add(shipment)
+        db.session.commit()
+
+        # Generate analytics for the shipment
+        generate_shipment_analytics(shipment.id)
+
+        # Update daily and monthly records
+        update_daily_records()
+        update_monthly_records()
+
+        flash(f'Shipment booked successfully! Tracking ID: {tracking_id}', 'success')
+        return redirect(url_for('shipment_slip', shipment_id=shipment.id))
+
+    return render_template('book_shipment.html', form=form, prefilled_sender=True)
+
+
+@app.route('/shipment/<int:shipment_id>/print-undertaking')
+@login_required
+def print_undertaking(shipment_id):
+    """Generate and return undertaking document with shipment details"""
+    shipment = Shipment.query.get_or_404(shipment_id)
+    if shipment.client_id != current_user.id and not current_user.is_admin:
+        flash('Access denied.', 'error')
+        return redirect(url_for('dashboard'))
+
+    # Generate undertaking PDF with shipment details
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+
+    # Custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        spaceAfter=30,
+        alignment=1  # Center alignment
+    )
+
+    content = []
+
+    # Header
+    content.append(Paragraph('PICS Courier Services', title_style))
+    content.append(Paragraph('UNDERTAKING / DECLARATION', styles['Heading2']))
+    content.append(Paragraph(f'Shipment ID: {shipment.tracking_id}', styles['Heading3']))
+    content.append(Spacer(1, 20))
+
+    # Create undertaking content using simple text with proper formatting
+    content.append(Spacer(1, 20))
+
+    # Title
+    title_style = ParagraphStyle(
+        'UndertakingTitle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        spaceAfter=20,
+        alignment=1  # Center alignment
+    )
+    content.append(Paragraph('DECLARATION AND UNDERTAKING', title_style))
+    content.append(Paragraph(f'Shipment ID: {shipment.tracking_id}', styles['Heading3']))
+    content.append(Spacer(1, 20))
+
+    # Main declaration text
+    declaration_style = ParagraphStyle(
+        'DeclarationText',
+        parent=styles['Normal'],
+        fontSize=11,
+        leading=14,
+        spaceAfter=12
+    )
+
+    content.append(Paragraph(
+        f'I, <b>{shipment.sender_name}</b>, holder of CNIC No. <b>{shipment.sender_cnic}</b>, residing at <b>{shipment.sender_address}</b>, do hereby solemnly declare and undertake as follows:',
+        declaration_style
+    ))
+
+    content.append(Spacer(1, 15))
+
+    # Numbered points
+    points = [
+        f"That I am the sender of the shipment with Tracking ID <b>{shipment.tracking_id}</b> being sent to <b>{shipment.receiver_name}</b> at <b>{shipment.receiver_address}</b>.",
+        "That the contents of the above-mentioned shipment are as declared and do not include any prohibited, illegal, or dangerous items.",
+        "That I accept full responsibility for the contents of the shipment and any consequences arising from any misdeclaration.",
+        "That I have read and understood all the terms and conditions of PICS Courier Services and agree to abide by them.",
+        "That I authorize PICS Courier Services to inspect the shipment if required by law or for security purposes.",
+        "That I understand that PICS Courier Services shall not be liable for any loss or damage to the shipment beyond the declared value.",
+        "That I declare that the weight and dimensions provided are accurate and I understand that incorrect information may result in additional charges.",
+        "That I understand that prohibited items will be confiscated and may result in legal action."
+    ]
+
+    for i, point in enumerate(points, 1):
+        content.append(Paragraph(f"{i}. {point}", declaration_style))
+
+    content.append(Spacer(1, 20))
+
+    # Information sections
+    section_style = ParagraphStyle(
+        'SectionHeader',
+        parent=styles['Normal'],
+        fontSize=12,
+        fontName='Helvetica-Bold',
+        spaceAfter=8
+    )
+
+    info_style = ParagraphStyle(
+        'InfoText',
+        parent=styles['Normal'],
+        fontSize=10,
+        leading=12,
+        spaceAfter=6
+    )
+
+    # Sender Information
+    content.append(Paragraph('<b>Sender Information:</b>', section_style))
+    sender_info = [
+        f"Name: {shipment.sender_name}",
+        f"CNIC: {shipment.sender_cnic}",
+        f"Phone: {shipment.sender_phone}",
+        f"Address: {shipment.sender_address}"
+    ]
+    for info in sender_info:
+        content.append(Paragraph(info, info_style))
+
+    content.append(Spacer(1, 15))
+
+    # Receiver Information
+    content.append(Paragraph('<b>Receiver Information:</b>', section_style))
+    receiver_info = [
+        f"Name: {shipment.receiver_name}",
+        f"CNIC: {shipment.receiver_cnic}",
+        f"Phone: {shipment.receiver_phone}",
+        f"Address: {shipment.receiver_address}"
+    ]
+    for info in receiver_info:
+        content.append(Paragraph(info, info_style))
+
+    content.append(Spacer(1, 15))
+
+    # Package Information
+    content.append(Paragraph('<b>Package Information:</b>', section_style))
+    package_info = [
+        f"Weight: {shipment.chargeable_weight} kg",
+        f"Dimensions: {shipment.length} × {shipment.width} × {shipment.height} cm",
+        f"Destination: {shipment.destination_country.name}",
+        f"Value: {shipment.destination_country.currency} {shipment.final_price}"
+    ]
+    for info in package_info:
+        content.append(Paragraph(info, info_style))
+
+    content.append(Spacer(1, 20))
+
+    # Final declaration
+    content.append(Paragraph(
+        'I hereby declare that the above information is true and correct to the best of my knowledge and belief.',
+        declaration_style
+    ))
+
+    content.append(Spacer(1, 20))
+
+    # Date and signature
+    date_style = ParagraphStyle(
+        'DateStyle',
+        parent=styles['Normal'],
+        fontSize=11,
+        alignment=1,  # Center alignment
+        spaceAfter=10
+    )
+
+    signature_style = ParagraphStyle(
+        'SignatureStyle',
+        parent=styles['Normal'],
+        fontSize=11,
+        alignment=1,  # Center alignment
+        spaceAfter=30
+    )
+
+    content.append(Paragraph(f'<b>Date: {shipment.created_at.strftime("%Y-%m-%d")}</b>', date_style))
+    content.append(Paragraph('___________________________', signature_style))
+    content.append(Paragraph("<b>Sender's Signature</b>", signature_style))
+
+    # Footer
+    content.append(Paragraph(f'Date: {shipment.created_at.strftime("%Y-%m-%d %H:%M")}', styles['Normal']))
+    content.append(Paragraph('Thank you for choosing PICS!', styles['Italic']))
+
+    doc.build(content)
+
+    buffer.seek(0)
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f'undertaking-{shipment.tracking_id}.pdf',
         mimetype='application/pdf'
     )
 
@@ -1401,16 +1776,40 @@ def create_tables():
         db.session.add(admin)
         db.session.commit()
 
-# Create tables when app starts
-with app.app_context():
-    create_tables()
+# Database initialization function
+def initialize_database():
+    """Initialize database tables and sample data"""
+    try:
+        with app.app_context():
+            create_tables()
+            print("Database tables created successfully!")
 
-    # Clean up any duplicate tracking IDs
-    cleanup_duplicate_tracking_ids()
+            # Clean up any duplicate tracking IDs
+            cleanup_duplicate_tracking_ids()
 
-    # Load sample pricing data if no countries exist
-    if Country.query.count() == 0:
-        load_sample_pricing_data()
+            # Load sample pricing data if no countries exist
+            if Country.query.count() == 0:
+                load_sample_pricing_data()
+                print("Sample pricing data loaded!")
+
+            print("Database initialization completed!")
+            return True
+    except Exception as e:
+        print(f"Database initialization failed: {e}")
+        return False
+
+# Initialize database only when running directly (not when imported)
+if __name__ == '__main__':
+    print("Starting PICS Courier Application...")
+    print("Initializing database...")
+
+    if initialize_database():
+        print("Application ready!")
+        print("Access the application at: http://localhost:5000")
+        app.run(debug=True)
+    else:
+        print("Failed to initialize database. Please check the error messages above.")
+        exit(1)
 
 if __name__ == '__main__':
     app.run(debug=True)

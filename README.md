@@ -11,27 +11,29 @@ A complete Python web application for courier services with advanced features in
 - **PDF Receipt Generation**: Professional PDF receipts with all shipment details
 - **Admin Panel**: Upload pricing data and manage system settings
 - **Responsive Design**: Modern, mobile-friendly interface using Tailwind CSS
+- **Analytics & Reporting**: Daily and monthly reports with export functionality
+- **Multi-format Receipts**: Generate receipts, shipment slips, and undertaking documents
 
 ## Installation
 
 1. **Clone or download** this project to your local machine
 
 2. **Install Python dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+  ```bash
+  pip install -r requirements.txt
+  ```
 
 3. **Set up the database**:
-   ```bash
-   python app.py
-   ```
-   The application will automatically create the database and default admin user.
+  ```bash
+  python main.py
+  ```
+  The application will automatically create the database and default admin user.
 
 4. **Access the application**:
-   - Open your browser and go to `http://localhost:5000`
-   - Default admin login:
-     - Email: `admin@pics.com`
-     - Password: `admin123`
+  - Open your browser and go to `http://localhost:5000`
+  - Default admin login:
+    - Email: `admin@login.com`
+    - Password: `admin123`
 
 ## Usage
 
@@ -39,12 +41,12 @@ A complete Python web application for courier services with advanced features in
 
 1. **Register** a new account or **login** with existing credentials
 2. **Book a shipment**:
-   - Fill in sender and receiver information
-   - Select destination country
-   - Choose weight type (actual or volumetric)
-   - Enter package dimensions and weight
-   - Review calculated pricing
-   - Submit to generate receipt
+  - Fill in sender and receiver information
+  - Select destination country
+  - Choose weight type (actual or volumetric)
+  - Enter package dimensions and weight
+  - Review calculated pricing
+  - Submit to generate receipt
 3. **Download PDF receipt** for your records
 4. **Track shipments** from your dashboard
 
@@ -52,10 +54,11 @@ A complete Python web application for courier services with advanced features in
 
 1. **Login** with admin credentials
 2. **Upload pricing data**:
-   - Go to Admin Panel → Upload Pricing Data
-   - Use the provided CSV format
-   - Upload sample_pricing.csv to get started
+  - Go to Admin Panel → Upload Pricing Data
+  - Use the provided CSV format
+  - Upload sample_pricing.csv to get started
 3. **Manage system** settings and view analytics
+4. **Generate reports** and export data
 
 ## CSV Pricing Format
 
@@ -97,9 +100,17 @@ Final Price = Base Price + GST
 ## File Structure
 
 ```
-├── app.py                 # Main Flask application
-├── requirements.txt       # Python dependencies
-├── sample_pricing.csv     # Sample pricing data
+├── main.py                 # Main Flask application
+├── requirements.txt        # Python dependencies
+├── runtime.txt            # Python runtime specification
+├── sample_pricing.csv      # Sample pricing data
+├── Procfile               # Heroku deployment configuration
+├── docker-compose.yml      # Docker Compose configuration
+├── Dockerfile             # Docker container configuration
+├── .env.example           # Environment variables template
+├── .dockerignore          # Docker ignore file
+├── instance/              # SQLite database directory
+│   └── courier.db
 ├── templates/             # HTML templates
 │   ├── base.html         # Base template
 │   ├── index.html        # Homepage
@@ -108,9 +119,15 @@ Final Price = Base Price + GST
 │   ├── dashboard.html    # User dashboard
 │   ├── book_shipment.html # Shipment booking form
 │   ├── receipt.html      # Shipment receipt
+│   ├── shipment_slip.html # Shipment slip
 │   ├── admin.html        # Admin panel
-│   └── upload_pricing.html # Pricing upload page
-└── uploads/              # Uploaded files (created automatically)
+│   ├── admin_shipments.html # Admin shipment management
+│   ├── upload_pricing.html # Pricing upload page
+│   ├── search_shipments.html # Shipment search
+│   ├── reports.html      # Reports overview
+│   ├── daily_reports.html # Daily reports
+│   └── monthly_reports.html # Monthly reports
+└── uploads/               # Uploaded files (created automatically)
 ```
 
 ## Technologies Used
@@ -135,17 +152,39 @@ Final Price = Base Price + GST
 
 To run in development mode:
 ```bash
-python app.py
+python main.py
 ```
 
 The application will start on `http://localhost:5000` with debug mode enabled.
 
 ## Production Deployment
 
+### Option 1: Docker (Recommended)
+```bash
+docker-compose up
+```
+
+### Option 2: Heroku
+```bash
+git push heroku main
+```
+
+### Option 3: Manual Deployment
 1. Set `SECRET_KEY` environment variable
 2. Configure production database URI
 3. Set `FLASK_ENV=production`
 4. Use a production WSGI server (e.g., Gunicorn)
+
+## Environment Variables
+
+Create a `.env` file based on `.env.example`:
+```env
+SECRET_KEY=your-secret-key-here
+DATABASE_URL=sqlite:///instance/courier.db
+FLASK_ENV=production
+UPLOAD_FOLDER=uploads
+MAX_CONTENT_LENGTH=16777216
+```
 
 ## Support
 

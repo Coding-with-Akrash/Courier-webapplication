@@ -167,7 +167,7 @@
                         <i class="fas fa-ticket-alt mr-2"></i>
                         Print Shipment Slip
                     </a>
-                    <a href="{{ url_for('book_shipment') }}"
+                    <a href="{{ url_for('book_similar_shipment', shipment_id=shipment.id) }}"
                        class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 text-center">
                         <i class="fas fa-plus mr-2"></i>
                         Book Another Shipment

@@ -6,18 +6,55 @@
 <div class="min-h-screen py-8">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900">Book New Shipment</h1>
-            <p class="mt-2 text-gray-600">Fill in the details to create your shipment</p>
+            <h1 class="text-3xl font-bold text-gray-900">
+                {% if prefilled_sender %}
+                    Book New Shipment
+                    <span class="text-lg text-blue-600 font-normal">(Sender info pre-filled)</span>
+                {% else %}
+                    Book New Shipment
+                {% endif %}
+            </h1>
+            <p class="mt-2 text-gray-600">
+                {% if prefilled_sender %}
+                    Fill in the receiver and package details to create your shipment
+                {% else %}
+                    Fill in the details to create your shipment
+                {% endif %}
+            </p>
+
+            {% if prefilled_sender %}
+            <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-info-circle text-blue-400"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-blue-800">
+                            Sender Information Pre-filled
+                        </h3>
+                        <div class="mt-2 text-sm text-blue-700">
+                            <p>Your sender information has been automatically filled from your previous shipment. Please review and update the receiver and package details below.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <form method="POST" class="space-y-6">
             {{ form.hidden_tag() }}
 
             <!-- Sender Information -->
-            <div class="bg-white p-6 rounded-lg shadow">
+            <div class="bg-white p-6 rounded-lg shadow {% if prefilled_sender %}border-2 border-green-200 bg-green-50{% endif %}">
                 <h2 class="text-xl font-semibold mb-4 flex items-center">
                     <i class="fas fa-user text-blue-600 mr-2"></i>
                     Sender Information
+                    {% if prefilled_sender %}
+                        <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <i class="fas fa-check-circle mr-1"></i>
+                            Pre-filled
+                        </span>
+                    {% endif %}
                 </h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {{ form.sender_name(class="p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent", placeholder="Full Name") }}
