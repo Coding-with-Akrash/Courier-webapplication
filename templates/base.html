@@ -8,6 +8,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <style>
         .gradient-bg {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -112,7 +114,6 @@
                         <i class="fas fa-shipping-fast text-2xl text-white"></i>
                     </div>
                     <span class="text-2xl font-bold text-gradient">PICS</span>
-                    <span class="hidden md:block text-sm text-gray-600 ml-2">Pakistan International Courier Services</span>
                 </div>
                 <div class="flex items-center space-x-3">
                     {% if current_user.is_authenticated %}
@@ -128,6 +129,9 @@
                             </a>
                             <a href="{{ url_for('book_shipment') }}" class="modern-button bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-2.5 hover:from-green-700 hover:to-green-800">
                                 Book Shipment
+                            </a>
+                            <a href="{{ url_for('parcel_management') }}" class="modern-button bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-2.5 hover:from-purple-700 hover:to-purple-800">
+                                Parcels
                             </a>
                             <a href="{{ url_for('logout') }}" class="modern-button bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-2.5 hover:from-red-700 hover:to-red-800">
                                 Logout
@@ -169,76 +173,6 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-gray-900 text-white py-16">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-                <!-- Company Info -->
-                <div class="col-span-1 md:col-span-2">
-                    <div class="flex items-center mb-4">
-                        <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-xl mr-3">
-                            <i class="fas fa-shipping-fast text-2xl text-white"></i>
-                        </div>
-                        <span class="text-2xl font-bold text-gradient">PICS</span>
-                    </div>
-                    <p class="text-gray-300 mb-4 max-w-md">
-                        Pakistan International Courier Services - Your trusted partner for fast, reliable, and secure courier solutions across Pakistan and worldwide.
-                    </p>
-                    <div class="flex space-x-4">
-                        <a href="#" class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors">
-                            <i class="fab fa-facebook-f"></i>
-                        </a>
-                        <a href="#" class="w-10 h-10 bg-blue-400 rounded-full flex items-center justify-center hover:bg-blue-500 transition-colors">
-                            <i class="fab fa-twitter"></i>
-                        </a>
-                        <a href="#" class="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700 transition-colors">
-                            <i class="fab fa-youtube"></i>
-                        </a>
-                        <a href="#" class="w-10 h-10 bg-blue-700 rounded-full flex items-center justify-center hover:bg-blue-800 transition-colors">
-                            <i class="fab fa-linkedin-in"></i>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Quick Links -->
-                <div>
-                    <h3 class="text-lg font-semibold mb-4">Quick Links</h3>
-                    <ul class="space-y-2">
-                        <li><a href="{{ url_for('index') }}" class="text-gray-300 hover:text-white transition-colors">Home</a></li>
-                        <li><a href="{{ url_for('register') }}" class="text-gray-300 hover:text-white transition-colors">Sign Up</a></li>
-                        <li><a href="{{ url_for('login') }}" class="text-gray-300 hover:text-white transition-colors">Login</a></li>
-                        <li><a href="{{ url_for('book_shipment') }}" class="text-gray-300 hover:text-white transition-colors">Book Shipment</a></li>
-                    </ul>
-                </div>
-
-                <!-- Services -->
-                <div>
-                    <h3 class="text-lg font-semibold mb-4">Services</h3>
-                    <ul class="space-y-2">
-                        <li><a href="#" class="text-gray-300 hover:text-white transition-colors">Express Delivery</a></li>
-                        <li><a href="#" class="text-gray-300 hover:text-white transition-colors">Standard Shipping</a></li>
-                        <li><a href="#" class="text-gray-300 hover:text-white transition-colors">International</a></li>
-                        <li><a href="#" class="text-gray-300 hover:text-white transition-colors">Document Services</a></li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- Bottom Bar -->
-            <div class="border-t border-gray-800 mt-12 pt-8">
-                <div class="flex flex-col md:flex-row justify-between items-center">
-                    <p class="text-gray-400 text-sm">
-                        © 2024 Pakistan International Courier Services (PICS). All rights reserved.
-                    </p>
-                    <div class="flex space-x-6 mt-4 md:mt-0">
-                        <a href="#" class="text-gray-400 hover:text-white text-sm transition-colors">Privacy Policy</a>
-                        <a href="#" class="text-gray-400 hover:text-white text-sm transition-colors">Terms of Service</a>
-                        <a href="#" class="text-gray-400 hover:text-white text-sm transition-colors">Support</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </footer>
-
     <script>
         // Auto-hide flash messages after 5 seconds
         setTimeout(() => {
@@ -249,12 +183,6 @@
                 setTimeout(() => alert.remove(), 500);
             });
         }, 5000);
-
-        // Mobile menu toggle
-        function toggleMobileMenu() {
-            const mobileMenu = document.getElementById('mobile-menu');
-            mobileMenu.classList.toggle('hidden');
-        }
     </script>
 </body>
 </html>

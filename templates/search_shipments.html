@@ -168,7 +168,7 @@
                                                     <div class="text-sm font-medium text-gray-900 font-mono">
                                                         {{ shipment.tracking_id }}
                                                         {% if current_user.is_admin %}
-                                                            <span class="ml-2 text-xs text-gray-500">(User: {{ shipment.client.name }})</span>
+                                                            <span class="ml-2 text-xs text-gray-500">(User: {{ shipment.branch.name }})</span>
                                                         {% endif %}
                                                     </div>
                                                     <div class="text-sm text-gray-500">

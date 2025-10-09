@@ -128,8 +128,8 @@
                                 <div class="text-sm font-medium text-blue-600">{{ shipment.tracking_id }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900">{{ shipment.client.name }}</div>
-                                <div class="text-sm text-gray-500">{{ shipment.client.email }}</div>
+                                <div class="text-sm text-gray-900">{{ shipment.branch.name }}</div>
+                                <div class="text-sm text-gray-500">{{ shipment.branch.email }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm text-gray-900">{{ shipment.sender_name }}</div>
@@ -191,6 +191,10 @@
                                     <a href="{{ url_for('download_receipt', shipment_id=shipment.id) }}"
                                        class="text-green-600 hover:text-green-900" title="Download PDF">
                                         <i class="fas fa-download"></i>
+                                    </a>
+                                    <a href="{{ url_for('barcode_info_page', barcode=shipment.barcode) }}"
+                                       class="text-purple-600 hover:text-purple-900" title="Barcode Info">
+                                        <i class="fas fa-barcode"></i>
                                     </a>
                                 </div>
                             </td>

@@ -124,6 +124,30 @@
                             <span>Total Amount:</span>
                             <span>{{ shipment.destination_country.currency }} {{ "%.2f"|format(shipment.final_price) }}</span>
                         </div>
+                        <div class="flex justify-between text-lg font-bold text-blue-600">
+                            <span>Total Amount (PKR):</span>
+                            <span>PKR {{ "%.2f"|format(shipment.final_price_pkr) }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Barcode Section -->
+                <div class="border border-gray-200 rounded-lg p-4 mb-8">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                        <i class="fas fa-barcode text-purple-600 mr-2"></i>
+                        Shipment Barcode
+                    </h3>
+                    <div class="text-center">
+                        <div class="bg-white border-2 border-gray-300 p-4 rounded-lg inline-block">
+                            <div class="text-xs text-gray-600 mb-2">Scan Barcode</div>
+                            <!-- Barcode placeholder - will be rendered as image in PDF -->
+                            <div class="bg-gray-100 p-8 rounded border">
+                                <div class="text-center">
+                                    <div class="font-mono text-sm bg-black text-white px-2 py-1 rounded mb-2">{{ shipment.barcode }}</div>
+                                    <div class="text-xs text-gray-500">Barcode: {{ shipment.barcode }}</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

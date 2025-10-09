@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        --info-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --card-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    .info-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: var(--card-shadow);
+        border: none;
+        margin-bottom: 1.5rem;
+    }
+
+    .barcode-display {
+        background: var(--primary-gradient);
+        color: white;
+        padding: 1rem;
+        border-radius: 10px;
+        font-family: 'Courier New', monospace;
+        font-size: 1.2rem;
+        font-weight: bold;
+        text-align: center;
+        letter-spacing: 2px;
+    }
+
+    .info-section {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+
+    .info-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 0.5rem;
+    }
+
+    .info-value {
+        font-size: 1.1rem;
+        color: #212529;
+        font-weight: 500;
+    }
+
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-booked { background: #e3f2fd; color: #1976d2; }
+    .status-in-transit { background: #e8eaf6; color: #3f51b5; }
+    .status-out-for-delivery { background: #fff3e0; color: #f57c00; }
+    .status-delivered { background: #e8f5e8; color: #388e3c; }
+    .status-cancelled { background: #ffebee; color: #d32f2f; }
+</style>
+
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-0">
+                        <i class="fas fa-barcode me-3"></i>Barcode Information
+                    </h1>
+                    <p class="mb-0 mt-2 opacity-75">Decoded shipment details from barcode</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <a href="{{ url_for('parcel_management') }}" class="btn btn-light">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Parcels
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <!-- Barcode Display -->
+                <div class="info-card card">
+                    <div class="card-body text-center">
+                        <h5 class="card-title mb-3">
+                            <i class="fas fa-qrcode text-primary me-2"></i>Barcode
+                        </h5>
+                        <div class="barcode-display">
+                            {{ barcode }}
+                        </div>
+                        <button class="btn btn-outline-primary mt-3" onclick="copyToClipboard('{{ barcode }}')">
+                            <i class="fas fa-copy me-2"></i>Copy Barcode
+                        </button>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Barcode Metadata -->
+                    <div class="col-lg-6">
+                        <div class="info-card card">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-info-circle text-primary me-2"></i>Barcode Metadata
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                {% if barcode_info %}
+                                <div class="info-section">
+                                    <div class="info-label">Version:</div>
+                                    <div class="info-value">{{ barcode_info.version }}</div>
+                                </div>
+                                <div class="info-section">
+                                    <div class="info-label">Timestamp:</div>
+                                    <div class="info-value">{{ barcode_info.timestamp }}</div>
+                                </div>
+                                <div class="info-section">
+                                    <div class="info-label">Type:</div>
+                                    <div class="info-value">{{ barcode_info.type }}</div>
+                                </div>
+                                <div class="info-section">
+                                    <div class="info-label">Random Component:</div>
+                                    <div class="info-value">{{ barcode_info.random }}</div>
+                                </div>
+                                {% if barcode_info.sender_phone %}
+                                <div class="info-section">
+                                    <div class="info-label">Sender Phone (Encoded):</div>
+                                    <div class="info-value">{{ barcode_info.sender_phone }}</div>
+                                </div>
+                                {% endif %}
+                                {% if barcode_info.receiver_phone %}
+                                <div class="info-section">
+                                    <div class="info-label">Receiver Phone (Encoded):</div>
+                                    <div class="info-value">{{ barcode_info.receiver_phone }}</div>
+                                </div>
+                                {% endif %}
+                                {% if barcode_info.weight %}
+                                <div class="info-section">
+                                    <div class="info-label">Weight (Encoded):</div>
+                                    <div class="info-value">{{ barcode_info.weight }} kg</div>
+                                </div>
+                                {% endif %}
+                                {% if barcode_info.destination %}
+                                <div class="info-section">
+                                    <div class="info-label">Destination (Encoded):</div>
+                                    <div class="info-value">{{ barcode_info.destination }}</div>
+                                </div>
+                                {% endif %}
+                                {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Unable to decode barcode metadata
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Shipment Information -->
+                    <div class="col-lg-6">
+                        <div class="info-card card">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-box text-success me-2"></i>Shipment Information
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                {% if shipment %}
+                                <div class="info-section">
+                                    <div class="info-label">Tracking ID:</div>
+                                    <div class="info-value">
+                                        <span class="badge bg-primary">{{ shipment.tracking_id }}</span>
+                                    </div>
+                                </div>
+                                <div class="info-section">
+                                    <div class="info-label">Status:</div>
+                                    <div class="info-value">
+                                        <span class="status-badge status-{{ shipment.status }}">
+                                            <i class="fas
+                                                {% if shipment.status == 'delivered' %}fa-check-circle
+                                                {% elif shipment.status == 'in_transit' %}fa-truck
+                                                {% elif shipment.status == 'out_for_delivery' %}fa-shipping-fast
+                                                {% elif shipment.status == 'cancelled' %}fa-times-circle
+                                                {% else %}fa-box{% endif %} me-1">
+                                            </i>
+                                            {{ shipment.status|replace('_', ' ')|title }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="info-section">
+                                    <div class="info-label">Created Date:</div>
+                                    <div class="info-value">{{ shipment.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">
+                                    <i class="fas fa-user text-info me-2"></i>Sender Details
+                                </h6>
+                                <div class="info-section">
+                                    <div class="info-label">Name:</div>
+                                    <div class="info-value">{{ shipment.sender_name }}</div>
+                                </div>
+                                <div class="info-section">
+                                    <div class="info-label">Phone:</div>
+                                    <div class="info-value">{{ shipment.sender_phone }}</div>
+                                </div>
+                                <div class="info-section">
+                                    <div class="info-label">CNIC:</div>
+                                    <div class="info-value">{{ shipment.sender_cnic }}</div>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">
+                                    <i class="fas fa-user-friends text-success me-2"></i>Receiver Details
+                                </h6>
+                                <div class="info-section">
+                                    <div class="info-label">Name:</div>
+                                    <div class="info-value">{{ shipment.receiver_name }}</div>
+                                </div>
+                                <div class="info-section">
+                                    <div class="info-label">Phone:</div>
+                                    <div class="info-value">{{ shipment.receiver_phone }}</div>
+                                </div>
+                                <div class="info-section">
+                                    <div class="info-label">CNIC:</div>
+                                    <div class="info-value">{{ shipment.receiver_cnic }}</div>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">
+                                    <i class="fas fa-map-marker-alt text-warning me-2"></i>Package Details
+                                </h6>
+                                <div class="info-section">
+                                    <div class="info-label">Destination:</div>
+                                    <div class="info-value">{{ shipment.destination_country.name }}</div>
+                                </div>
+                                <div class="info-section">
+                                    <div class="info-label">Weight:</div>
+                                    <div class="info-value">{{ "%.2f"|format(shipment.chargeable_weight) }} kg</div>
+                                </div>
+                                <div class="info-section">
+                                    <div class="info-label">Dimensions:</div>
+                                    <div class="info-value">{{ shipment.length }} × {{ shipment.width }} × {{ shipment.height }} cm</div>
+                                </div>
+                                <div class="info-section">
+                                    <div class="info-label">Package Type:</div>
+                                    <div class="info-value">{{ 'Documents' if shipment.document_type == 'docs' else 'Non-Documents' }}</div>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-danger">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    No shipment found for this barcode
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="info-card card">
+                    <div class="card-body text-center">
+                        <h5 class="card-title mb-3">Quick Actions</h5>
+                        <div class="btn-group" role="group">
+                            {% if shipment %}
+                            <a href="{{ url_for('shipment_slip', shipment_id=shipment.id) }}"
+                               class="btn btn-primary" target="_blank">
+                                <i class="fas fa-file-alt me-2"></i>View Slip
+                            </a>
+                            <a href="{{ url_for('shipment_receipt', shipment_id=shipment.id) }}"
+                               class="btn btn-success" target="_blank">
+                                <i class="fas fa-receipt me-2"></i>View Receipt
+                            </a>
+                            <button class="btn btn-info" onclick="trackShipment('{{ shipment.tracking_id }}')">
+                                <i class="fas fa-search me-2"></i>Track Shipment
+                            </button>
+                            <a href="{{ url_for('download_receipt', shipment_id=shipment.id) }}"
+                               class="btn btn-warning">
+                                <i class="fas fa-download me-2"></i>Download PDF
+                            </a>
+                            {% endif %}
+                            <button class="btn btn-secondary" onclick="printBarcode()">
+                                <i class="fas fa-print me-2"></i>Print Barcode
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // Show success message
+        showAlert('Barcode copied to clipboard!', 'success');
+    }, function(err) {
+        console.error('Could not copy text: ', err);
+        showAlert('Failed to copy barcode', 'error');
+    });
+}
+
+function showAlert(message, type) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show position-fixed" style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', alertHtml);
+
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        const alert = document.querySelector('.alert-dismissible');
+        if (alert) {
+            alert.remove();
+        }
+    }, 3000);
+}
+
+function trackShipment(trackingId) {
+    window.open(`/track?tracking_id=${trackingId}`, '_blank');
+}
+
+function printBarcode() {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Barcode: {{ barcode }}</title>
+            <style>
+                body {
+                    font-family: 'Courier New', monospace;
+                    text-align: center;
+                    padding: 20px;
+                }
+                .barcode {
+                    font-size: 24px;
+                    font-weight: bold;
+                    letter-spacing: 3px;
+                    background: #f8f9fa;
+                    padding: 20px;
+                    border: 2px solid #333;
+                    display: inline-block;
+                    margin: 20px 0;
+                }
+                .info {
+                    margin: 10px 0;
+                    padding: 5px;
+                }
+            </style>
+        </head>
+        <body>
+            <h1>PICS Courier Barcode</h1>
+            <div class="barcode">{{ barcode }}</div>
+            {% if shipment %}
+            <div class="info"><strong>Tracking ID:</strong> {{ shipment.tracking_id }}</div>
+            <div class="info"><strong>Sender:</strong> {{ shipment.sender_name }}</div>
+            <div class="info"><strong>Receiver:</strong> {{ shipment.receiver_name }}</div>
+            <div class="info"><strong>Destination:</strong> {{ shipment.destination_country.name }}</div>
+            {% endif %}
+            <script>
+                window.onload = function() {
+                    window.print();
+                    setTimeout(function() { window.close(); }, 1000);
+                }
+            </script>
+        </body>
+        </html>
+    `);
+}
+</script>
+{% endblock %}

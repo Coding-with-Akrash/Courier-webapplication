@@ -1,0 +1,816 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        --warning-gradient: linear-gradient(135deg, #fcb045 0%, #fd1d1d 100%);
+        --info-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --danger-gradient: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+        --secondary-gradient: linear-gradient(135deg, #bdc3c7 0%, #2c3e50 100%);
+        --card-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        --card-shadow-hover: 0 20px 40px rgba(0,0,0,0.15);
+    }
+
+    .stats-card {
+        background: var(--card-shadow);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        transition: all 0.3s ease;
+        border: none;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stats-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--primary-gradient);
+    }
+
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--card-shadow-hover);
+    }
+
+    .stats-card.total-parcels {
+        background: var(--primary-gradient);
+        color: white;
+    }
+
+    .stats-card.total-revenue {
+        background: var(--success-gradient);
+        color: white;
+    }
+
+    .stats-card.total-weight {
+        background: var(--warning-gradient);
+        color: white;
+    }
+
+    .stats-card.avg-value {
+        background: var(--info-gradient);
+        color: white;
+    }
+
+    .stats-icon {
+        font-size: 2.5rem;
+        opacity: 0.3;
+        position: absolute;
+        bottom: 10px;
+        right: 15px;
+    }
+
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-booked { background: #e3f2fd; color: #1976d2; }
+    .status-in-transit { background: #e8eaf6; color: #3f51b5; }
+    .status-out-for-delivery { background: #fff3e0; color: #f57c00; }
+    .status-delivered { background: #e8f5e8; color: #388e3c; }
+    .status-cancelled { background: #ffebee; color: #d32f2f; }
+
+    .action-btn {
+        padding: 0.4rem 0.8rem;
+        margin: 0.1rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        transition: all 0.2s ease;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .search-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: var(--card-shadow);
+        border: none;
+    }
+
+    .table-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: var(--card-shadow);
+        border: none;
+        overflow: hidden;
+    }
+
+    .table th {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: none;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+        padding: 1rem;
+    }
+
+    .table td {
+        border: none;
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .table tbody tr {
+        transition: all 0.2s ease;
+    }
+
+    .table tbody tr:hover {
+        background: #f8f9ff;
+        transform: scale(1.01);
+    }
+
+    .status-overview-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: var(--card-shadow);
+        border: none;
+    }
+
+    .status-item {
+        text-align: center;
+        padding: 1.5rem;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+
+    .status-item:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+
+    .status-number {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .status-booked .status-number { color: #1976d2; }
+    .status-in-transit .status-number { color: #3f51b5; }
+    .status-out-for-delivery .status-number { color: #f57c00; }
+    .status-delivered .status-number { color: #388e3c; }
+    .status-cancelled .status-number { color: #d32f2f; }
+
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        border-radius: 0 0 25px 25px;
+    }
+
+    .btn-create {
+        background: var(--success-gradient);
+        border: none;
+        padding: 0.8rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-create:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(17, 153, 142, 0.3);
+    }
+
+    .btn-export {
+        background: var(--primary-gradient);
+        border: none;
+        padding: 0.8rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-export:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .modal-content {
+        border-radius: 15px;
+        border: none;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+
+    .modal-header {
+        background: var(--primary-gradient);
+        color: white;
+        border-radius: 15px 15px 0 0;
+        border: none;
+    }
+
+    .btn-close {
+        filter: invert(1);
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        border: 2px solid #e9ecef;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    .pagination .page-link {
+        border-radius: 8px;
+        margin: 0 0.2rem;
+        border: 2px solid #e9ecef;
+        color: #667eea;
+        font-weight: 600;
+    }
+
+    .pagination .page-item.active .page-link {
+        background: var(--primary-gradient);
+        border-color: transparent;
+    }
+
+    .tracking-id {
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+    }
+
+    .loading-spinner {
+        display: none;
+        width: 20px;
+        height: 20px;
+    }
+</style>
+
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h1 class="mb-0">
+                        <i class="fas fa-boxes me-3"></i>Parcel Management
+                    </h1>
+                    <p class="mb-0 mt-2 opacity-75">Manage and track all your shipments</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <a href="{{ url_for('book_shipment') }}" class="btn btn-create me-2">
+                        <i class="fas fa-plus me-2"></i>Book New Shipment
+                    </a>
+                    <button class="btn btn-export" onclick="exportParcels()">
+                        <i class="fas fa-download me-2"></i>Export Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <!-- Statistics Cards -->
+                <div class="row mb-4">
+                    <div class="col-xl-3 col-lg-6 col-md-6">
+                        <div class="stats-card total-parcels">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-white-50 mb-1">Total Parcels</h6>
+                                    <h2 class="mb-0">{{ total_shipments }}</h2>
+                                </div>
+                                <i class="fas fa-boxes stats-icon"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-6 col-md-6">
+                        <div class="stats-card total-revenue">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-white-50 mb-1">Total Revenue</h6>
+                                    <h2 class="mb-0">${{ "%.2f"|format(total_revenue) }}</h2>
+                                </div>
+                                <i class="fas fa-dollar-sign stats-icon"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-6 col-md-6">
+                        <div class="stats-card total-weight">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-white-50 mb-1">Total Weight</h6>
+                                    <h2 class="mb-0">{{ "%.1f"|format(total_weight) }} kg</h2>
+                                </div>
+                                <i class="fas fa-weight stats-icon"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-6 col-md-6">
+                        <div class="stats-card avg-value">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-white-50 mb-1">Avg. Value</h6>
+                                    <h2 class="mb-0">${{ "%.2f"|format(total_revenue/total_shipments if total_shipments > 0 else 0) }}</h2>
+                                </div>
+                                <i class="fas fa-chart-line stats-icon"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status Overview -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="status-overview-card card">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-chart-pie me-2 text-primary"></i>Status Overview
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    {% for status, count in status_counts.items() %}
+                                    <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-3">
+                                        <div class="status-item status-{{ status }}">
+                                            <div class="status-number">{{ count }}</div>
+                                            <div class="status-label">
+                                                <i class="fas fa-circle me-2" style="font-size: 0.6rem;"></i>
+                                                {{ status|replace('_', ' ')|title }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search and Filter -->
+                <div class="search-card card mb-4">
+                    <div class="card-body p-4">
+                        <form method="GET" class="row g-3 align-items-end">
+                            <div class="col-xl-4 col-lg-6 col-md-6">
+                                <label class="form-label">
+                                    <i class="fas fa-search me-2 text-primary"></i>Search
+                                </label>
+                                <input type="text" name="search" class="form-control form-control-lg"
+                                       placeholder="Search by tracking ID, sender, receiver..."
+                                       value="{{ search_query }}">
+                            </div>
+                            <div class="col-xl-2 col-lg-6 col-md-6">
+                                <label class="form-label">
+                                    <i class="fas fa-filter me-2 text-primary"></i>Status
+                                </label>
+                                <select name="status" class="form-select form-select-lg">
+                                    <option value="">All Statuses</option>
+                                    <option value="booked" {% if status_filter == 'booked' %}selected{% endif %}>📦 Booked</option>
+                                    <option value="in_transit" {% if status_filter == 'in_transit' %}selected{% endif %}>🚚 In Transit</option>
+                                    <option value="out_for_delivery" {% if status_filter == 'out_for_delivery' %}selected{% endif %}>🚛 Out for Delivery</option>
+                                    <option value="delivered" {% if status_filter == 'delivered' %}selected{% endif %}>✅ Delivered</option>
+                                    <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>❌ Cancelled</option>
+                                </select>
+                            </div>
+                            <div class="col-xl-2 col-lg-6 col-md-6">
+                                <label class="form-label">
+                                    <i class="fas fa-globe me-2 text-primary"></i>Country
+                                </label>
+                                <select name="country" class="form-select form-select-lg">
+                                    <option value="">All Countries</option>
+                                    {% for country in countries %}
+                                    <option value="{{ country.id }}" {% if country_filter == country.id|string %}selected{% endif %}>
+                                        {{ country.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-xl-2 col-lg-6 col-md-6">
+                                <button type="submit" class="btn btn-primary me-2" style="padding: 0.8rem 1.5rem;">
+                                    <i class="fas fa-search me-2"></i>Filter
+                                </button>
+                                <a href="{{ url_for('parcel_management') }}" class="btn btn-outline-secondary" style="padding: 0.8rem 1.5rem;">
+                                    <i class="fas fa-undo me-2"></i>Clear
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Parcels Table -->
+                <div class="table-card card">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list me-2 text-primary"></i>Your Parcels
+                            <span class="badge bg-primary ms-2">{{ shipments|length }}</span>
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+                                    <tr>
+                                        <th class="border-0 py-3 px-4">
+                                            <i class="fas fa-hashtag me-2"></i>Tracking ID
+                                        </th>
+                                        <th class="border-0 py-3 px-4">
+                                            <i class="fas fa-user me-2"></i>Sender
+                                        </th>
+                                        <th class="border-0 py-3 px-4">
+                                            <i class="fas fa-user-friends me-2"></i>Receiver
+                                        </th>
+                                        <th class="border-0 py-3 px-4">
+                                            <i class="fas fa-map-marker-alt me-2"></i>Destination
+                                        </th>
+                                        <th class="border-0 py-3 px-4">
+                                            <i class="fas fa-weight me-2"></i>Weight
+                                        </th>
+                                        <th class="border-0 py-3 px-4">
+                                            <i class="fas fa-info-circle me-2"></i>Status
+                                        </th>
+                                        <th class="border-0 py-3 px-4">
+                                            <i class="fas fa-dollar-sign me-2"></i>Value
+                                        </th>
+                                        <th class="border-0 py-3 px-4">
+                                            <i class="fas fa-calendar me-2"></i>Date
+                                        </th>
+                                        <th class="border-0 py-3 px-4 text-center">
+                                            <i class="fas fa-cogs me-2"></i>Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for shipment in shipments %}
+                                    <tr class="shipment-row" data-shipment-id="{{ shipment.id }}">
+                                        <td class="px-4 py-3">
+                                            <div class="tracking-id text-primary">{{ shipment.tracking_id }}</div>
+                                            <small class="text-muted">{{ shipment.barcode }}</small>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <div class="fw-bold">{{ shipment.sender_name }}</div>
+                                            <small class="text-muted">
+                                                <i class="fas fa-phone me-1"></i>{{ shipment.sender_phone }}
+                                            </small>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <div class="fw-bold">{{ shipment.receiver_name }}</div>
+                                            <small class="text-muted">
+                                                <i class="fas fa-phone me-1"></i>{{ shipment.receiver_phone }}
+                                            </small>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <span class="fw-bold text-primary">{{ shipment.destination_country.name }}</span>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <span class="badge bg-light text-dark px-3 py-2">
+                                                {{ "%.1f"|format(shipment.chargeable_weight) }} kg
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <span class="status-badge status-{{ shipment.status }}">
+                                                <i class="fas
+                                                    {% if shipment.status == 'delivered' %}fa-check-circle
+                                                    {% elif shipment.status == 'in_transit' %}fa-truck
+                                                    {% elif shipment.status == 'out_for_delivery' %}fa-shipping-fast
+                                                    {% elif shipment.status == 'cancelled' %}fa-times-circle
+                                                    {% else %}fa-box{% endif %} me-1">
+                                                </i>
+                                                {{ shipment.status|replace('_', ' ')|title }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <div class="fw-bold text-success">${{ "%.2f"|format(shipment.final_price) }}</div>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <div>{{ shipment.created_at.strftime('%Y-%m-%d') }}</div>
+                                            <small class="text-muted">{{ shipment.created_at.strftime('%H:%M') }}</small>
+                                        </td>
+                                        <td class="px-4 py-3 text-center">
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('shipment_slip', shipment_id=shipment.id) }}"
+                                                   class="btn action-btn btn-outline-primary" target="_blank"
+                                                   data-bs-toggle="tooltip" title="View Slip">
+                                                    <i class="fas fa-file-alt"></i>
+                                                </a>
+                                                <a href="{{ url_for('shipment_receipt', shipment_id=shipment.id) }}"
+                                                   class="btn action-btn btn-outline-success" target="_blank"
+                                                   data-bs-toggle="tooltip" title="View Receipt">
+                                                    <i class="fas fa-receipt"></i>
+                                                </a>
+                                                <button class="btn action-btn btn-outline-info"
+                                                        onclick="trackShipment('{{ shipment.tracking_id }}')"
+                                                        data-bs-toggle="tooltip" title="Track Shipment">
+                                                    <i class="fas fa-search"></i>
+                                                </button>
+                                                <a href="{{ url_for('barcode_info_page', barcode=shipment.barcode) }}"
+                                                   class="btn action-btn btn-outline-warning"
+                                                   data-bs-toggle="tooltip" title="Barcode Info">
+                                                    <i class="fas fa-barcode"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if pagination.pages > 1 %}
+                        <div class="d-flex justify-content-between align-items-center p-4 bg-light">
+                            <div class="text-muted">
+                                Showing {{ (pagination.page - 1) * pagination.per_page + 1 }} to
+                                {{ (pagination.page - 1) * pagination.per_page + shipments|length }} of
+                                {{ pagination.total }} entries
+                            </div>
+                            <nav aria-label="Parcels pagination">
+                                <ul class="pagination pagination-lg mb-0">
+                                    {% if pagination.has_prev %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('parcel_management', page=pagination.prev_num, search=search_query, status=status_filter, country=country_filter) }}">
+                                            <i class="fas fa-chevron-left me-1"></i>Previous
+                                        </a>
+                                    </li>
+                                    {% endif %}
+
+                                    {% for page_num in pagination.iter_pages() %}
+                                    {% if page_num %}
+                                    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                                        <a class="page-link" href="{{ url_for('parcel_management', page=page_num, search=search_query, status=status_filter, country=country_filter) }}">
+                                            {{ page_num }}
+                                        </a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                    {% endif %}
+                                    {% endfor %}
+
+                                    {% if pagination.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('parcel_management', page=pagination.next_num, search=search_query, status=status_filter, country=country_filter) }}">
+                                            Next<i class="fas fa-chevron-right ms-1"></i>
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Update Modal -->
+<div class="modal fade" id="statusUpdateModal" tabindex="-1" aria-labelledby="statusUpdateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="statusUpdateModalLabel">
+                    <i class="fas fa-edit me-2"></i>Update Shipment Status
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Updating status for:</label>
+                    <div class="fw-bold text-primary fs-5" id="updateTrackingId"></div>
+                </div>
+                <div class="mb-3">
+                    <label for="newStatus" class="form-label">New Status:</label>
+                    <select class="form-select form-select-lg" id="newStatus">
+                        <option value="booked">
+                            <i class="fas fa-box me-2"></i>📦 Booked
+                        </option>
+                        <option value="in_transit">
+                            <i class="fas fa-truck me-2"></i>🚚 In Transit
+                        </option>
+                        <option value="out_for_delivery">
+                            <i class="fas fa-shipping-fast me-2"></i>🚛 Out for Delivery
+                        </option>
+                        <option value="delivered">
+                            <i class="fas fa-check-circle me-2"></i>✅ Delivered
+                        </option>
+                        <option value="cancelled">
+                            <i class="fas fa-times-circle me-2"></i>❌ Cancelled
+                        </option>
+                    </select>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    This action will update the shipment status and may trigger notifications.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-primary btn-lg" onclick="updateShipmentStatus()">
+                    <i class="fas fa-save me-2"></i>Update Status
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentShipmentId = null;
+
+// Initialize tooltips when document is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Add loading states to action buttons
+    document.querySelectorAll('.action-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const originalIcon = this.innerHTML;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            setTimeout(() => {
+                this.innerHTML = originalIcon;
+            }, 1000);
+        });
+    });
+});
+
+function trackShipment(trackingId) {
+    // Show loading state
+    const btn = event.target.closest('button');
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Tracking...';
+
+    // Open tracking page
+    const trackWindow = window.open(`/track?tracking_id=${trackingId}`, '_blank');
+
+    // Restore button after a short delay
+    setTimeout(() => {
+        btn.innerHTML = originalContent;
+    }, 1500);
+}
+
+function updateShipmentStatus() {
+    const newStatus = document.getElementById('newStatus').value;
+    const statusText = document.getElementById('newStatus').options[document.getElementById('newStatus').selectedIndex].text;
+
+    // Show loading state
+    const updateBtn = document.querySelector('#statusUpdateModal .btn-primary');
+    const originalText = updateBtn.innerHTML;
+    updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Updating...';
+    updateBtn.disabled = true;
+
+    fetch(`/shipment/${currentShipmentId}/update-status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            showAlert('Success! Shipment status updated to ' + statusText, 'success');
+
+            // Close modal and reload after delay
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showAlert('Error: ' + data.error, 'danger');
+            updateBtn.innerHTML = originalText;
+            updateBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        showAlert('Error updating status: ' + error.message, 'danger');
+        updateBtn.innerHTML = originalText;
+        updateBtn.disabled = false;
+    });
+}
+
+function showAlert(message, type) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show position-fixed" style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', alertHtml);
+
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        const alert = document.querySelector('.alert-dismissible');
+        if (alert) {
+            alert.remove();
+        }
+    }, 5000);
+}
+
+function exportParcels() {
+    const exportBtn = event.target;
+    const originalText = exportBtn.innerHTML;
+    exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Exporting...';
+    exportBtn.disabled = true;
+
+    const url = new URL('/api/parcels/export', window.location.origin);
+    url.searchParams.set('search', '{{ search_query }}');
+    url.searchParams.set('status', '{{ status_filter }}');
+    url.searchParams.set('country', '{{ country_filter }}');
+
+    // Open export in new window
+    const exportWindow = window.open(url.toString(), '_blank');
+
+    // Restore button after delay
+    setTimeout(() => {
+        exportBtn.innerHTML = originalText;
+        exportBtn.disabled = false;
+    }, 2000);
+}
+
+// Auto-refresh every 45 seconds for real-time updates (increased from 30s)
+let refreshInterval = setInterval(function() {
+    if (document.visibilityState === 'visible') {
+        // Only refresh if page is visible and no filters are applied
+        const currentUrl = new URL(window.location);
+        if (!currentUrl.searchParams.has('search') &&
+            !currentUrl.searchParams.has('status') &&
+            !currentUrl.searchParams.has('country')) {
+
+            // Show refresh indicator
+            showAlert('Refreshing data...', 'info');
+
+            // Refresh page
+            location.reload();
+        }
+    }
+}, 45000);
+
+// Clear refresh interval when page is not visible to save resources
+document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'hidden') {
+        clearInterval(refreshInterval);
+    } else {
+        // Restart refresh interval when page becomes visible again
+        refreshInterval = setInterval(function() {
+            const currentUrl = new URL(window.location);
+            if (!currentUrl.searchParams.has('search') &&
+                !currentUrl.searchParams.has('status') &&
+                !currentUrl.searchParams.has('country')) {
+                location.reload();
+            }
+        }, 45000);
+    }
+});
+
+// Add smooth scrolling for pagination
+document.querySelectorAll('.page-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+        if (this.href) {
+            e.preventDefault();
+            document.querySelector('.table-card').scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+
+            // Navigate after scroll
+            setTimeout(() => {
+                window.location.href = this.href;
+            }, 500);
+        }
+    });
+});
+
+// Add keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Ctrl/Cmd + R to refresh
+    if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+        e.preventDefault();
+        location.reload();
+    }
+
+    // Escape key to close modals
+    if (e.key === 'Escape') {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('statusUpdateModal'));
+        if (modal) {
+            modal.hide();
+        }
+    }
+});
+</script>
+{% endblock %}

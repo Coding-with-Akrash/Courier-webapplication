@@ -276,6 +276,14 @@
                             <strong class="text-purple-700">Amount:</strong><br>
                             <span class="text-base font-semibold">{{ shipment.destination_country.currency }} {{ "%.2f"|format(shipment.final_price) }}</span>
                         </div>
+                        <div class="text-center">
+                            <strong class="text-purple-700">Amount (PKR):</strong><br>
+                            <span class="text-base font-semibold">PKR {{ "%.2f"|format(shipment.final_price_pkr) }}</span>
+                        </div>
+                        <div class="text-center">
+                            <strong class="text-purple-700">Amount (PKR):</strong><br>
+                            <span class="text-base font-semibold">PKR {{ "%.2f"|format(shipment.final_price_pkr) }}</span>
+                        </div>
                     </div>
                     <div class="mt-3 text-center">
                         <span class="font-medium text-xs">Weight Type:</span>
@@ -558,9 +566,14 @@ function generateBarcode(canvasId, text) {
 // Initialize barcodes when page loads
 document.addEventListener('DOMContentLoaded', function() {
     const trackingId = '{{ shipment.tracking_id }}';
-    generateBarcode('barcode-sender', trackingId);
-    generateBarcode('barcode-courier', trackingId);
-    generateBarcode('barcode-parcel', trackingId);
+    const barcode = '{{ shipment.barcode }}';
+
+    // Use barcode for barcode generation, fallback to tracking ID
+    const barcodeText = barcode || trackingId;
+
+    generateBarcode('barcode-sender', barcodeText);
+    generateBarcode('barcode-courier', barcodeText);
+    generateBarcode('barcode-parcel', barcodeText);
 });
 </script>
 {% endblock %}

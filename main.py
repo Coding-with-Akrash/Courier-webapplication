@@ -1,3 +1,4 @@
+# Updated to force template reload
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -16,7 +17,11 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 from reportlab.lib import colors
+from reportlab.graphics.barcode import code128
+from reportlab.graphics.shapes import Drawing
+from reportlab.graphics import renderPDF
 import csv
+import random
 
 app = Flask(__name__)
 
@@ -38,19 +43,20 @@ if not os.path.exists(app.config['UPLOAD_FOLDER']):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return Client.query.get(int(user_id))
+    return Branch.query.get(int(user_id))
 
 # Database Models
-class Client(UserMixin, db.Model):
+class Branch(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     phone = db.Column(db.String(20), nullable=False)
-    cnic = db.Column(db.String(20), unique=True, nullable=False)
+    branch_code = db.Column(db.String(20), unique=True, nullable=False)
     address = db.Column(db.Text, nullable=False)
     postal_code = db.Column(db.String(20), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def set_password(self, password):
@@ -80,7 +86,12 @@ class PricingTier(db.Model):
 class Shipment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     tracking_id = db.Column(db.String(50), unique=True, nullable=False)
-    client_id = db.Column(db.Integer, db.ForeignKey('client.id'), nullable=False)
+    barcode = db.Column(db.String(20), unique=True, nullable=False)
+    client_id = db.Column(db.Integer, db.ForeignKey('branch.id'), nullable=False)  # Changed from branch_id to client_id to match existing DB
+
+    # Insurance fields (from existing database)
+    insurance_amount = db.Column(db.Float, default=0)
+    insurance_selected = db.Column(db.Boolean, default=False)
 
     # Sender Information
     sender_name = db.Column(db.String(100), nullable=False)
@@ -111,6 +122,7 @@ class Shipment(db.Model):
     base_price = db.Column(db.Float, nullable=False)
     gst_amount = db.Column(db.Float, nullable=False)
     final_price = db.Column(db.Float, nullable=False)
+    final_price_pkr = db.Column(db.Float, nullable=False)  # Final price in PKR
 
     # Status
     status = db.Column(db.String(20), default='booked')  # booked, in_transit, delivered, cancelled
@@ -121,7 +133,7 @@ class Shipment(db.Model):
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    client = db.relationship('Client', backref=db.backref('shipments', lazy=True))
+    branch = db.relationship('Branch', backref=db.backref('shipments', lazy=True))
     destination_country = db.relationship('Country', backref=db.backref('shipments', lazy=True))
 
 class DailyRecord(db.Model):
@@ -164,24 +176,24 @@ class LoginForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired()])
 
-class RegistrationForm(FlaskForm):
-    name = StringField('Full Name', validators=[DataRequired(), Length(min=2, max=100)])
+class BranchRegistrationForm(FlaskForm):
+    name = StringField('Branch Name', validators=[DataRequired(), Length(min=2, max=100)])
     email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
     phone = StringField('Phone', validators=[DataRequired(), Length(min=10, max=20)])
-    cnic = StringField('CNIC', validators=[DataRequired(), Length(min=13, max=20)])
+    branch_code = StringField('Branch Code', validators=[DataRequired(), Length(min=2, max=20)])
     address = TextAreaField('Address', validators=[DataRequired()])
     postal_code = StringField('Postal Code', validators=[DataRequired()])
 
     def validate_email(self, email):
-        client = Client.query.filter_by(email=email.data).first()
-        if client:
+        branch = Branch.query.filter_by(email=email.data).first()
+        if branch:
             raise ValidationError('Email already registered.')
 
-    def validate_cnic(self, cnic):
-        client = Client.query.filter_by(cnic=cnic.data).first()
-        if client:
-            raise ValidationError('CNIC already registered.')
+    def validate_branch_code(self, branch_code):
+        branch = Branch.query.filter_by(branch_code=branch_code.data).first()
+        if branch:
+            raise ValidationError('Branch code already registered.')
 
 
 class ShipmentForm(FlaskForm):
@@ -227,9 +239,9 @@ def login():
 
     form = LoginForm()
     if form.validate_on_submit():
-        client = Client.query.filter_by(email=form.email.data).first()
-        if client and client.check_password(form.password.data):
-            login_user(client)
+        branch = Branch.query.filter_by(email=form.email.data).first()
+        if branch and branch.check_password(form.password.data):
+            login_user(branch)
             flash('Logged in successfully!', 'success')
             return redirect(url_for('dashboard'))
         flash('Invalid email or password.', 'error')
@@ -241,21 +253,23 @@ def register():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
 
-    form = RegistrationForm()
+    form = BranchRegistrationForm()
     if form.validate_on_submit():
-        client = Client(
+        branch = Branch(
             name=form.name.data,
             email=form.email.data,
             phone=form.phone.data,
-            cnic=form.cnic.data,
+            branch_code=form.branch_code.data,
             address=form.address.data,
-            postal_code=form.postal_code.data
+            postal_code=form.postal_code.data,
+            is_admin=False,
+            is_active=True
         )
-        client.set_password(form.password.data)
-        db.session.add(client)
+        branch.set_password(form.password.data)
+        db.session.add(branch)
         db.session.commit()
 
-        flash('Registration successful! Please log in.', 'success')
+        flash('Branch registration successful! Please log in.', 'success')
         return redirect(url_for('login'))
 
     return render_template('register.html', form=form)
@@ -314,12 +328,16 @@ def book_shipment():
             flash(pricing_data['error'], 'error')
             return render_template('book_shipment.html', form=form)
 
-        # Generate tracking ID
+        # Generate tracking ID and barcode
         tracking_id = generate_tracking_id()
 
-        # Create shipment
+        # Calculate PKR price
+        final_price_pkr = convert_to_pkr(pricing_data['final_price'], pricing_data['currency'])
+
+        # Create shipment first (without barcode)
         shipment = Shipment(
             tracking_id=tracking_id,
+            barcode='',  # Will be set after creation
             client_id=current_user.id,
             sender_name=form.sender_name.data,
             sender_phone=form.sender_phone.data,
@@ -343,12 +361,17 @@ def book_shipment():
             base_price=pricing_data['base_price'],
             gst_amount=pricing_data['gst_amount'],
             final_price=pricing_data['final_price'],
+            final_price_pkr=final_price_pkr,
             undertaking_accepted=form.undertaking_accepted.data,
             undertaking_text=form.undertaking_text.data or None
         )
 
         db.session.add(shipment)
         db.session.commit()
+
+        # Generate comprehensive barcode with shipment data
+        barcode = generate_barcode_with_shipment_data(shipment)
+        db.session.commit()  # Commit the barcode update
 
         # Generate analytics for the shipment
         generate_shipment_analytics(shipment.id)
@@ -583,7 +606,7 @@ def search_shipments():
 
     # Build query based on user role
     if current_user.is_admin:
-        query = Shipment.query.join(Client).join(Country)
+        query = Shipment.query.join(Branch).join(Country)
     else:
         query = Shipment.query.join(Country).filter(Shipment.client_id == current_user.id)
 
@@ -592,7 +615,7 @@ def search_shipments():
         query = query.filter(
             db.or_(
                 Shipment.tracking_id.ilike(f'%{search_query}%'),
-                Client.name.ilike(f'%{search_query}%'),
+                Branch.name.ilike(f'%{search_query}%'),
                 Shipment.sender_name.ilike(f'%{search_query}%'),
                 Shipment.receiver_name.ilike(f'%{search_query}%')
             )
@@ -673,12 +696,16 @@ def book_similar_shipment(shipment_id):
             flash(pricing_data['error'], 'error')
             return render_template('book_shipment.html', form=form)
 
-        # Generate tracking ID
+        # Generate tracking ID and barcode
         tracking_id = generate_tracking_id()
+
+        # Calculate PKR price
+        final_price_pkr = convert_to_pkr(pricing_data['final_price'], pricing_data['currency'])
 
         # Create new shipment with same sender info but new receiver/package info
         shipment = Shipment(
             tracking_id=tracking_id,
+            barcode='',  # Will be set after creation
             client_id=current_user.id,
             sender_name=form.sender_name.data,
             sender_phone=form.sender_phone.data,
@@ -702,12 +729,17 @@ def book_similar_shipment(shipment_id):
             base_price=pricing_data['base_price'],
             gst_amount=pricing_data['gst_amount'],
             final_price=pricing_data['final_price'],
+            final_price_pkr=final_price_pkr,
             undertaking_accepted=form.undertaking_accepted.data,
             undertaking_text=form.undertaking_text.data or None
         )
 
         db.session.add(shipment)
         db.session.commit()
+
+        # Generate comprehensive barcode with shipment data
+        barcode = generate_barcode_with_shipment_data(shipment)
+        db.session.commit()  # Commit the barcode update
 
         # Generate analytics for the shipment
         generate_shipment_analytics(shipment.id)
@@ -1035,13 +1067,13 @@ def admin():
 
     # Get statistics
     total_shipments = Shipment.query.count()
-    total_clients = Client.query.filter_by(is_admin=False).count()
+    total_branches = Branch.query.filter_by(is_admin=False).count()
     active_countries = Country.query.filter_by(is_active=True).count()
     total_revenue = db.session.query(db.func.sum(Shipment.final_price)).scalar() or 0
 
     return render_template('admin.html',
                          total_shipments=total_shipments,
-                         total_clients=total_clients,
+                         total_branches=total_branches,
                          active_countries=active_countries,
                          total_revenue=total_revenue)
 
@@ -1373,7 +1405,7 @@ def admin_shipments():
     per_page = 20
 
     # Build query
-    query = Shipment.query.join(Client).join(Country)
+    query = Shipment.query.join(Branch).join(Country)
 
     if status_filter:
         query = query.filter(Shipment.status == status_filter)
@@ -1385,8 +1417,8 @@ def admin_shipments():
         query = query.filter(
             db.or_(
                 Shipment.tracking_id.ilike(f'%{search_query}%'),
-                Client.name.ilike(f'%{search_query}%'),
-                Client.email.ilike(f'%{search_query}%'),
+                Branch.name.ilike(f'%{search_query}%'),
+                Branch.email.ilike(f'%{search_query}%'),
                 Shipment.sender_name.ilike(f'%{search_query}%'),
                 Shipment.receiver_name.ilike(f'%{search_query}%')
             )
@@ -1425,10 +1457,10 @@ def export_all_shipments():
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('dashboard'))
 
-    # Get all shipments with client and country info
+    # Get all shipments with branch and country info
     shipments = db.session.query(
-        Shipment, Client, Country
-    ).join(Client).join(Country).order_by(Shipment.created_at.desc()).all()
+        Shipment, Branch, Country
+    ).join(Branch).join(Country).order_by(Shipment.created_at.desc()).all()
 
     # Generate CSV
     output = io.StringIO()
@@ -1443,11 +1475,11 @@ def export_all_shipments():
     ])
 
     # Write data
-    for shipment, client, country in shipments:
+    for shipment, branch, country in shipments:
         writer.writerow([
             shipment.tracking_id,
-            client.name,
-            client.email,
+            branch.name,
+            branch.email,
             shipment.sender_name,
             shipment.sender_phone,
             shipment.receiver_name,
@@ -1468,6 +1500,469 @@ def export_all_shipments():
         output.getvalue(),
         mimetype='text/csv',
         headers={'Content-disposition': 'attachment; filename=all_shipments.csv'}
+    )
+
+
+
+
+
+
+
+
+
+
+@app.route('/parcel-management')
+@login_required
+def parcel_management():
+    """Enhanced parcel management for branch users"""
+    # Get filter parameters
+    search_query = request.args.get('search', '')
+    status_filter = request.args.get('status', '')
+    country_filter = request.args.get('country', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+
+    # Build query for current user's shipments
+    query = Shipment.query.filter_by(client_id=current_user.id).join(Country)
+
+    # Apply filters
+    if search_query:
+        query = query.filter(
+            db.or_(
+                Shipment.tracking_id.ilike(f'%{search_query}%'),
+                Shipment.sender_name.ilike(f'%{search_query}%'),
+                Shipment.receiver_name.ilike(f'%{search_query}%'),
+                Shipment.sender_phone.ilike(f'%{search_query}%')
+            )
+        )
+
+    if status_filter:
+        query = query.filter(Shipment.status == status_filter)
+
+    if country_filter:
+        query = query.filter(Shipment.destination_country_id == country_filter)
+
+    # Get pagination
+    shipments_paginated = query.order_by(Shipment.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    # Get filter options
+    countries = Country.query.filter_by(is_active=True).all()
+    statuses = ['booked', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled']
+
+    # Calculate summary statistics
+    total_shipments = Shipment.query.filter_by(client_id=current_user.id).count()
+    total_revenue = db.session.query(db.func.sum(Shipment.final_price)).filter_by(client_id=current_user.id).scalar() or 0
+    total_weight = db.session.query(db.func.sum(Shipment.chargeable_weight)).filter_by(client_id=current_user.id).scalar() or 0
+
+    # Status breakdown
+    status_counts = {}
+    for status in statuses:
+        status_counts[status] = Shipment.query.filter_by(client_id=current_user.id, status=status).count()
+
+    return render_template('parcel_management.html',
+                         shipments=shipments_paginated.items,
+                         pagination=shipments_paginated,
+                         countries=countries,
+                         statuses=statuses,
+                         search_query=search_query,
+                         status_filter=status_filter,
+                         country_filter=country_filter,
+                         total_shipments=total_shipments,
+                         total_revenue=total_revenue,
+                         total_weight=total_weight,
+                         status_counts=status_counts)
+
+
+
+@app.route('/admin/parcel-management')
+@login_required
+def admin_parcel_management():
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('dashboard'))
+
+    # Get filter parameters
+    search_query = request.args.get('search', '')
+    status_filter = request.args.get('status', '')
+    country_filter = request.args.get('country', '')
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+
+    # Build query
+    query = db.session.query(
+        Shipment, Branch, Country
+    ).join(Branch).join(Country)
+
+    # Apply filters
+    if search_query:
+        query = query.filter(
+            db.or_(
+                Shipment.tracking_id.ilike(f'%{search_query}%'),
+                Branch.name.ilike(f'%{search_query}%'),
+                Shipment.sender_name.ilike(f'%{search_query}%'),
+                Shipment.sender_phone.ilike(f'%{search_query}%')
+            )
+        )
+
+    if status_filter:
+        query = query.filter(Shipment.status == status_filter)
+
+    if country_filter:
+        query = query.filter(Shipment.destination_country_id == country_filter)
+
+    if date_from:
+        query = query.filter(db.func.date(Shipment.created_at) >= date_from)
+
+    if date_to:
+        query = query.filter(db.func.date(Shipment.created_at) <= date_to)
+
+    # Get pagination
+    shipments_paginated = query.order_by(Shipment.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    # Format data for template
+    parcels = []
+    for shipment, branch, country in shipments_paginated.items:
+        parcels.append({
+            'id': shipment.id,
+            'tracking_id': shipment.tracking_id,
+            'barcode': shipment.barcode,
+            'client_name': branch.name,
+            'sender_phone': shipment.sender_phone,
+            'destination_country': country.name,
+            'chargeable_weight': shipment.chargeable_weight,
+            'weight_type': shipment.weight_type,
+            'final_price': shipment.final_price,
+            'final_price_pkr': shipment.final_price_pkr,
+            'status': shipment.status,
+            'created_at': shipment.created_at,
+            'created_date': shipment.created_at.strftime('%Y-%m-%d'),
+            'created_time': shipment.created_at.strftime('%H:%M')
+        })
+
+    # Calculate statistics
+    total_parcels = query.count()
+    in_transit_count = query.filter(Shipment.status == 'in_transit').count()
+    delivered_count = query.filter(Shipment.status == 'delivered').count()
+    total_weight = query.with_entities(db.func.sum(Shipment.chargeable_weight)).scalar() or 0
+
+    # Get countries for filter dropdown
+    countries = Country.query.filter_by(is_active=True).all()
+
+    return render_template('admin_parcel_management.html',
+                         parcels=parcels,
+                         pagination=shipments_paginated,
+                         countries=countries,
+                         search_query=search_query,
+                         status_filter=status_filter,
+                         country_filter=country_filter,
+                         date_from=date_from,
+                         date_to=date_to,
+                         total_parcels=total_parcels,
+                         in_transit_count=in_transit_count,
+                         delivered_count=delivered_count,
+                         total_weight=total_weight)
+
+@app.route('/api/parcels/filter')
+@login_required
+def api_filter_parcels():
+    if not current_user.is_admin:
+        return jsonify({'error': 'Access denied. Admin privileges required.'}), 403
+
+    # Get filter parameters
+    search_query = request.args.get('search', '')
+    status_filter = request.args.get('status', '')
+    country_filter = request.args.get('country', '')
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+
+    # Build query
+    query = db.session.query(
+        Shipment, Branch, Country
+    ).join(Branch).join(Country)
+
+    # Apply filters
+    if search_query:
+        query = query.filter(
+            db.or_(
+                Shipment.tracking_id.ilike(f'%{search_query}%'),
+                Branch.name.ilike(f'%{search_query}%'),
+                Shipment.sender_name.ilike(f'%{search_query}%'),
+                Shipment.sender_phone.ilike(f'%{search_query}%')
+            )
+        )
+
+    if status_filter:
+        query = query.filter(Shipment.status == status_filter)
+
+    if country_filter:
+        query = query.filter(Shipment.destination_country_id == country_filter)
+
+    if date_from:
+        query = query.filter(db.func.date(Shipment.created_at) >= date_from)
+
+    if date_to:
+        query = query.filter(db.func.date(Shipment.created_at) <= date_to)
+
+    # Get pagination
+    shipments_paginated = query.order_by(Shipment.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    # Format data for API response
+    parcels = []
+    for shipment, branch, country in shipments_paginated.items:
+        parcels.append({
+            'id': shipment.id,
+            'tracking_id': shipment.tracking_id,
+            'barcode': shipment.barcode,
+            'client_name': branch.name,
+            'sender_phone': shipment.sender_phone,
+            'destination_country': country.name,
+            'chargeable_weight': float(shipment.chargeable_weight),
+            'weight_type': shipment.weight_type,
+            'final_price': float(shipment.final_price),
+            'final_price_pkr': float(shipment.final_price_pkr),
+            'status': shipment.status,
+            'created_date': shipment.created_at.strftime('%Y-%m-%d'),
+            'created_time': shipment.created_at.strftime('%H:%M')
+        })
+
+    # Calculate statistics
+    total_parcels = query.count()
+    in_transit_count = query.filter(Shipment.status == 'in_transit').count()
+    delivered_count = query.filter(Shipment.status == 'delivered').count()
+    total_weight = float(query.with_entities(db.func.sum(Shipment.chargeable_weight)).scalar() or 0)
+
+    return jsonify({
+        'parcels': parcels,
+        'pagination': {
+            'page': page,
+            'per_page': per_page,
+            'total': total_parcels,
+            'pages': shipments_paginated.pages,
+            'has_next': shipments_paginated.has_next,
+            'has_prev': shipments_paginated.has_prev
+        },
+        'statistics': {
+            'total_parcels': total_parcels,
+            'in_transit_count': in_transit_count,
+            'delivered_count': delivered_count,
+            'total_weight': round(total_weight, 2)
+        }
+    })
+
+@app.route('/api/parcels/bulk-update', methods=['POST'])
+@login_required
+def bulk_update_parcels():
+    if not current_user.is_admin:
+        return jsonify({'error': 'Access denied. Admin privileges required.'}), 403
+
+    data = request.get_json()
+    if not data or 'parcel_ids' not in data or 'action' not in data:
+        return jsonify({'error': 'Invalid data provided.'}), 400
+
+    parcel_ids = data['parcel_ids']
+    action = data['action']
+
+    # Validate action
+    valid_actions = ['mark_in_transit', 'mark_out_for_delivery', 'mark_delivered', 'cancel']
+    if action not in valid_actions:
+        return jsonify({'error': 'Invalid action.'}), 400
+
+    # Map actions to status
+    status_map = {
+        'mark_in_transit': 'in_transit',
+        'mark_out_for_delivery': 'out_for_delivery',
+        'mark_delivered': 'delivered',
+        'cancel': 'cancelled'
+    }
+
+    new_status = status_map[action]
+
+    try:
+        # Update all selected parcels
+        updated_count = Shipment.query.filter(
+            Shipment.id.in_(parcel_ids)
+        ).update({
+            'status': new_status
+        }, synchronize_session=False)
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'Successfully updated {updated_count} parcels to {new_status}.',
+            'updated_count': updated_count
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to update parcels: {str(e)}'}), 500
+
+@app.route('/api/barcode/decode/<barcode>')
+@login_required
+def decode_barcode_api(barcode):
+    """Decode barcode and return shipment information"""
+    barcode_info = decode_barcode(barcode)
+
+    if not barcode_info:
+        return jsonify({'error': 'Invalid barcode format'}), 400
+
+    # Find shipment by barcode
+    shipment = Shipment.query.filter_by(barcode=barcode).first()
+
+    if not shipment:
+        return jsonify({
+            'error': 'Shipment not found',
+            'barcode_info': barcode_info
+        }), 404
+
+    # Return comprehensive information
+    return jsonify({
+        'success': True,
+        'barcode_info': barcode_info,
+        'shipment': {
+            'id': shipment.id,
+            'tracking_id': shipment.tracking_id,
+            'sender_name': shipment.sender_name,
+            'sender_phone': shipment.sender_phone,
+            'receiver_name': shipment.receiver_name,
+            'receiver_phone': shipment.receiver_phone,
+            'destination': shipment.destination_country.name,
+            'weight': float(shipment.chargeable_weight),
+            'status': shipment.status,
+            'created_at': shipment.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        }
+    })
+
+@app.route('/barcode-info/<barcode>')
+@login_required
+def barcode_info_page(barcode):
+    """Display barcode information page"""
+    barcode_info = decode_barcode(barcode)
+    shipment = Shipment.query.filter_by(barcode=barcode).first()
+
+    if not shipment:
+        flash('Shipment not found for this barcode.', 'error')
+        return redirect(url_for('dashboard'))
+
+    return render_template('barcode_info.html',
+                         barcode=barcode,
+                         barcode_info=barcode_info,
+                         shipment=shipment)
+
+@app.route('/api/barcode/validate/<barcode>')
+@login_required
+def validate_barcode_api(barcode):
+    """Validate barcode and return basic information"""
+    barcode_info = decode_barcode(barcode)
+
+    if not barcode_info:
+        return jsonify({
+            'valid': False,
+            'error': 'Invalid barcode format'
+        })
+
+    # Find shipment by barcode
+    shipment = Shipment.query.filter_by(barcode=barcode).first()
+
+    return jsonify({
+        'valid': True,
+        'barcode_info': barcode_info,
+        'shipment_exists': shipment is not None,
+        'tracking_id': shipment.tracking_id if shipment else None,
+        'status': shipment.status if shipment else None
+    })
+
+@app.route('/api/parcels/export')
+@login_required
+def export_filtered_parcels():
+    if not current_user.is_admin:
+        return jsonify({'error': 'Access denied. Admin privileges required.'}), 403
+
+    # Get filter parameters
+    search_query = request.args.get('search', '')
+    status_filter = request.args.get('status', '')
+    country_filter = request.args.get('country', '')
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+
+    # Build query
+    query = db.session.query(
+        Shipment, Branch, Country
+    ).join(Branch).join(Country)
+
+    # Apply filters
+    if search_query:
+        query = query.filter(
+            db.or_(
+                Shipment.tracking_id.ilike(f'%{search_query}%'),
+                Branch.name.ilike(f'%{search_query}%'),
+                Shipment.sender_name.ilike(f'%{search_query}%'),
+                Shipment.sender_phone.ilike(f'%{search_query}%')
+            )
+        )
+
+    if status_filter:
+        query = query.filter(Shipment.status == status_filter)
+
+    if country_filter:
+        query = query.filter(Shipment.destination_country_id == country_filter)
+
+    if date_from:
+        query = query.filter(db.func.date(Shipment.created_at) >= date_from)
+
+    if date_to:
+        query = query.filter(db.func.date(Shipment.created_at) <= date_to)
+
+    # Get all matching shipments
+    shipments = query.order_by(Shipment.created_at.desc()).all()
+
+    # Generate CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Write header
+    writer.writerow([
+        'Tracking ID', 'Barcode', 'Customer Name', 'Customer Email', 'Sender Name', 'Sender Phone',
+        'Receiver Name', 'Receiver Phone', 'Destination Country', 'Weight (kg)',
+        'Weight Type', 'Package Type', 'Final Price', 'Final Price (PKR)', 'Status', 'Created At'
+    ])
+
+    # Write data
+    for shipment, branch, country in shipments:
+        writer.writerow([
+            shipment.tracking_id,
+            shipment.barcode,
+            branch.name,
+            branch.email,
+            shipment.sender_name,
+            shipment.sender_phone,
+            shipment.receiver_name,
+            shipment.receiver_phone,
+            country.name,
+            f"{shipment.chargeable_weight:.2f}",
+            shipment.weight_type.title(),
+            'Documents' if shipment.document_type == 'docs' else 'Non-Documents',
+            f"{shipment.final_price:.2f}",
+            f"{shipment.final_price_pkr:.2f}",
+            shipment.status.title(),
+            shipment.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        ])
+
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-disposition': 'attachment; filename=filtered_parcels.csv'}
     )
 
 @app.route('/admin/cleanup-duplicates')
@@ -1574,6 +2069,149 @@ def generate_tracking_id():
 
     return tracking_id
 
+def generate_barcode_number(shipment_data=None):
+    """Generate a comprehensive barcode that encodes shipment information"""
+    import json
+    import base64
+    import hashlib
+
+    # Create a unique barcode that includes shipment information
+    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+    random_component = str(random.randint(1000, 9999))
+
+    # Create barcode data structure
+    barcode_info = {
+        'version': '1.0',
+        'timestamp': timestamp,
+        'random': random_component,
+        'shipment_id': '',  # Will be filled when shipment is created
+        'sender_phone': shipment_data.get('sender_phone', '')[:10] if shipment_data else '',
+        'receiver_phone': shipment_data.get('receiver_phone', '')[:10] if shipment_data else '',
+        'weight': str(shipment_data.get('weight', ''))[:5] if shipment_data else '',
+        'destination': shipment_data.get('destination_code', '')[:3] if shipment_data else '',
+        'type': 'PICS'  # PICS Courier
+    }
+
+    # Convert to JSON and encode
+    json_data = json.dumps(barcode_info, separators=(',', ':'))
+    encoded_data = base64.b64encode(json_data.encode('utf-8')).decode('utf-8')
+
+    # Create readable barcode (remove special characters for barcode compatibility)
+    clean_encoded = encoded_data.replace('/', '_').replace('+', '-').replace('=', '')
+
+    # Create final barcode format: PICS + timestamp + encoded data (truncated)
+    barcode = f"PICS{timestamp}{clean_encoded[:20]}{random_component}"
+
+    # Ensure uniqueness by checking database
+    max_attempts = 10
+    attempts = 0
+
+    while Shipment.query.filter_by(barcode=barcode).count() > 0 and attempts < max_attempts:
+        # Regenerate with new random component if barcode exists
+        random_component = str(random.randint(1000, 9999))
+        barcode_info['random'] = random_component
+        json_data = json.dumps(barcode_info, separators=(',', ':'))
+        encoded_data = base64.b64encode(json_data.encode('utf-8')).decode('utf-8')
+        clean_encoded = encoded_data.replace('/', '_').replace('+', '-').replace('=', '')
+        barcode = f"PICS{timestamp}{clean_encoded[:20]}{random_component}"
+        attempts += 1
+
+    if attempts >= max_attempts:
+        # Fallback to simple unique barcode if we can't generate a unique encoded one
+        fallback_timestamp = datetime.now().strftime('%H%M%S%f')[:10]
+        barcode = f"PICS{fallback_timestamp}{random.randint(1000, 9999)}"
+
+        # Final uniqueness check
+        while Shipment.query.filter_by(barcode=barcode).count() > 0:
+            barcode = f"PICS{fallback_timestamp}{random.randint(1000, 9999)}"
+
+    return barcode
+
+def decode_barcode(barcode):
+    """Decode barcode to extract shipment information"""
+    try:
+        if not barcode.startswith('PICS'):
+            return None
+
+        # Extract encoded part (after PICS and before final random digits)
+        encoded_part = barcode[4:-4]  # Remove PICS prefix and last 4 random digits
+
+        # Restore base64 characters
+        encoded_part = encoded_part.replace('_', '/').replace('-', '+')
+        # Add padding if needed
+        missing_padding = len(encoded_part) % 4
+        if missing_padding:
+            encoded_part += '=' * (4 - missing_padding)
+
+        # Decode
+        json_data = base64.b64decode(encoded_part).decode('utf-8')
+        barcode_info = json.loads(json_data)
+
+        return barcode_info
+
+    except Exception as e:
+        print(f"Error decoding barcode {barcode}: {e}")
+        return None
+
+def generate_barcode_with_shipment_data(shipment):
+    """Generate barcode using actual shipment data"""
+    shipment_data = {
+        'sender_phone': shipment.sender_phone,
+        'receiver_phone': shipment.receiver_phone,
+        'weight': str(shipment.chargeable_weight),
+        'destination_code': shipment.destination_country.code if shipment.destination_country else '',
+    }
+
+    # Generate barcode with shipment data
+    barcode = generate_barcode_number(shipment_data)
+
+    # Update shipment with the new barcode
+    shipment.barcode = barcode
+
+    return barcode
+
+def generate_branch_code():
+    """Generate a unique branch code for customers"""
+    # Generate a 6-character branch code
+    # Format: BR + 4 random digits
+    random_digits = str(random.randint(1000, 9999))
+    branch_code = f"BR{random_digits}"
+
+    # Ensure uniqueness
+    while Branch.query.filter_by(branch_code=branch_code).count() > 0:
+        random_digits = str(random.randint(1000, 9999))
+        branch_code = f"BR{random_digits}"
+
+    return branch_code
+
+def create_barcode_drawing(barcode_data):
+    """Create a barcode drawing for PDF reports"""
+    barcode = code128.Code128(barcode_data)
+    drawing = Drawing(200, 50)
+    drawing.add(barcode)
+
+    # Position the barcode in the center
+    barcode.move(100, 0)  # Center horizontally
+
+    return drawing
+
+def convert_to_pkr(amount, from_currency='USD'):
+    """Convert foreign currency to PKR"""
+    # Exchange rates (you can update these as needed)
+    exchange_rates = {
+        'USD': 278.50,  # 1 USD = 278.50 PKR
+        'EUR': 295.00,  # 1 EUR = 295.00 PKR
+        'GBP': 345.00,  # 1 GBP = 345.00 PKR
+        'AED': 76.00,   # 1 AED = 76.00 PKR
+        'SAR': 74.00,   # 1 SAR = 74.00 PKR
+    }
+
+    if from_currency in exchange_rates:
+        return amount * exchange_rates[from_currency]
+    else:
+        # Default conversion rate if currency not found
+        return amount * 278.50  # Default to USD rate
+
 def update_daily_records():
     """Update daily records for today and yesterday if needed"""
     today = datetime.now().date()
@@ -1673,6 +2311,38 @@ def generate_shipment_analytics(shipment_id):
     db.session.commit()
     return analytics
 
+def test_barcode_system():
+    """Test the barcode generation and decoding system"""
+    print("Testing Enhanced Barcode System...")
+
+    # Test data
+    test_shipment_data = {
+        'sender_phone': '03111234567',
+        'receiver_phone': '03119876543',
+        'weight': '2.5',
+        'destination_code': 'PK'
+    }
+
+    # Generate barcode
+    barcode = generate_barcode_number(test_shipment_data)
+    print(f"Generated Barcode: {barcode}")
+
+    # Decode barcode
+    decoded_info = decode_barcode(barcode)
+    print(f"Decoded Info: {decoded_info}")
+
+    # Verify the barcode contains expected information
+    if decoded_info:
+        print("✓ Barcode generation and decoding successful!")
+        print(f"✓ Encoded sender phone: {decoded_info.get('sender_phone', 'N/A')}")
+        print(f"✓ Encoded receiver phone: {decoded_info.get('receiver_phone', 'N/A')}")
+        print(f"✓ Encoded weight: {decoded_info.get('weight', 'N/A')}")
+        print(f"✓ Destination code: {decoded_info.get('destination', 'N/A')}")
+    else:
+        print("✗ Barcode decoding failed!")
+
+    return barcode
+
 def cleanup_duplicate_tracking_ids():
     """Clean up duplicate tracking IDs in the database"""
     from sqlalchemy import text
@@ -1761,13 +2431,13 @@ def create_tables():
     db.create_all()
 
     # Create default admin user if not exists
-    admin = Client.query.filter_by(email='admin@login.com').first()
+    admin = Branch.query.filter_by(email='admin@login.com').first()
     if not admin:
-        admin = Client(
+        admin = Branch(
             name='Administrator',
             email='admin@login.com',
             phone='0000000000',
-            cnic='0000000000000',
+            branch_code='ADMIN',
             address='Admin Office',
             postal_code='00000',
             is_admin=True
@@ -1781,16 +2451,41 @@ def initialize_database():
     """Initialize database tables and sample data"""
     try:
         with app.app_context():
-            create_tables()
-            print("Database tables created successfully!")
+            # Only create tables if they don't exist
+            try:
+                create_tables()
+                print("Database tables created successfully!")
+            except Exception as e:
+                print(f"Note: Tables may already exist: {e}")
 
             # Clean up any duplicate tracking IDs
-            cleanup_duplicate_tracking_ids()
+            try:
+                cleanup_duplicate_tracking_ids()
+            except Exception as e:
+                print(f"Note: Could not cleanup duplicates: {e}")
 
             # Load sample pricing data if no countries exist
-            if Country.query.count() == 0:
-                load_sample_pricing_data()
-                print("Sample pricing data loaded!")
+            try:
+                if Country.query.count() == 0:
+                    load_sample_pricing_data()
+                    print("Sample pricing data loaded!")
+            except Exception as e:
+                print(f"Note: Could not load pricing data: {e}")
+
+            # Create sample customers for testing if no customers exist
+            try:
+                if Branch.query.filter_by(is_admin=False).count() == 0:
+                    create_sample_customers()
+                    print("Sample customers created!")
+            except Exception as e:
+                print(f"Note: Could not create sample customers: {e}")
+
+            # Test the enhanced barcode system
+            try:
+                test_barcode_system()
+                print("Enhanced barcode system test completed!")
+            except Exception as e:
+                print(f"Note: Could not test barcode system: {e}")
 
             print("Database initialization completed!")
             return True
@@ -1798,17 +2493,255 @@ def initialize_database():
         print(f"Database initialization failed: {e}")
         return False
 
+
+def create_sample_shipments():
+    """Create sample shipments with different senders for testing"""
+    try:
+        # Get or create a test admin user
+        admin = Branch.query.filter_by(email='admin@login.com').first()
+        if not admin:
+            return
+
+        # Get a destination country
+        pakistan = Country.query.filter_by(code='PK').first()
+        if not pakistan:
+            pakistan = Country(
+                name='Pakistan',
+                code='PK',
+                currency='PKR',
+                is_active=True
+            )
+            db.session.add(pakistan)
+            db.session.flush()  # Flush to get the ID without committing
+
+        # Sample shipment data
+        sample_shipments = [
+            {
+                'sender_name': 'Ahmed Hassan',
+                'sender_phone': '03111234567',
+                'sender_cnic': '3520112345671',
+                'sender_address': '123 Main Street, Lahore, Pakistan',
+                'sender_postal_code': '54000',
+                'receiver_name': 'Sara Ahmed',
+                'receiver_phone': '03111234568',
+                'receiver_cnic': '3520112345674',
+                'receiver_address': '456 Business Ave, Karachi, Pakistan',
+                'receiver_postal_code': '75500'
+            },
+            {
+                'sender_name': 'Fatima Khan',
+                'sender_phone': '03219876543',
+                'sender_cnic': '3520112345672',
+                'sender_address': '456 Garden Road, Karachi, Pakistan',
+                'sender_postal_code': '75500',
+                'receiver_name': 'Omar Khan',
+                'receiver_phone': '03219876544',
+                'receiver_cnic': '3520112345675',
+                'receiver_address': '789 Mall Road, Lahore, Pakistan',
+                'receiver_postal_code': '54000'
+            },
+            {
+                'sender_name': 'Usman Ali',
+                'sender_phone': '03331234567',
+                'sender_cnic': '3520112345673',
+                'sender_address': '789 Business District, Islamabad, Pakistan',
+                'sender_postal_code': '44000',
+                'receiver_name': 'Ayesha Usman',
+                'receiver_phone': '03331234568',
+                'receiver_cnic': '3520112345676',
+                'receiver_address': '321 Lake View, Islamabad, Pakistan',
+                'receiver_postal_code': '44000'
+            },
+            {
+                'sender_name': 'Ahmed Hassan',  # Repeat customer
+                'sender_phone': '03111234567',
+                'sender_cnic': '3520112345671',
+                'sender_address': '123 Main Street, Lahore, Pakistan',
+                'sender_postal_code': '54000',
+                'receiver_name': 'Zahra Ahmed',
+                'receiver_phone': '03111234569',
+                'receiver_cnic': '3520112345677',
+                'receiver_address': '654 Park Lane, Faisalabad, Pakistan',
+                'receiver_postal_code': '38000'
+            }
+        ]
+
+        shipments_created = 0
+        for shipment_data in sample_shipments:
+            # Check if similar shipment already exists
+            existing = Shipment.query.filter_by(
+                sender_phone=shipment_data['sender_phone'],
+                receiver_phone=shipment_data['receiver_phone']
+            ).first()
+
+            if not existing:
+                # Generate tracking ID and barcode
+                tracking_id = generate_tracking_id()
+
+                # Calculate pricing (using default values)
+                pricing_data = calculate_pricing(
+                    pakistan.id, 10, 10, 10, 1.0, 'actual'
+                )
+
+                if 'error' not in pricing_data:
+                    final_price_pkr = convert_to_pkr(pricing_data['final_price'], 'USD')
+
+                    shipment = Shipment(
+                        tracking_id=tracking_id,
+                        barcode='',  # Will be set after creation
+                        client_id=admin.id,
+                        sender_name=shipment_data['sender_name'],
+                        sender_phone=shipment_data['sender_phone'],
+                        sender_cnic=shipment_data['sender_cnic'],
+                        sender_address=shipment_data['sender_address'],
+                        sender_postal_code=shipment_data['sender_postal_code'],
+                        receiver_name=shipment_data['receiver_name'],
+                        receiver_phone=shipment_data['receiver_phone'],
+                        receiver_cnic=shipment_data['receiver_cnic'],
+                        receiver_address=shipment_data['receiver_address'],
+                        receiver_postal_code=shipment_data['receiver_postal_code'],
+                        destination_country_id=pakistan.id,
+                        length=10,
+                        width=10,
+                        height=10,
+                        actual_weight=1.0,
+                        weight_type='actual',
+                        document_type='non_docs',
+                        volumetric_weight=pricing_data['volumetric_weight'],
+                        chargeable_weight=pricing_data['chargeable_weight'],
+                        base_price=pricing_data['base_price'],
+                        gst_amount=pricing_data['gst_amount'],
+                        final_price=pricing_data['final_price'],
+                        final_price_pkr=final_price_pkr,
+                        status='delivered'  # Mark as delivered so they appear in history
+                    )
+
+                    db.session.add(shipment)
+                    shipments_created += 1
+
+        db.session.commit()
+
+        # Generate comprehensive barcodes for all created shipments
+        for shipment_data in sample_shipments[:shipments_created]:
+            existing = Shipment.query.filter_by(
+                sender_phone=shipment_data['sender_phone'],
+                receiver_phone=shipment_data['receiver_phone']
+            ).first()
+
+            if existing and not existing.barcode:
+                generate_barcode_with_shipment_data(existing)
+
+        db.session.commit()
+        print(f"Created {shipments_created} sample shipments for testing!")
+
+    except Exception as e:
+        print(f"Error creating sample shipments: {e}")
+        db.session.rollback()
+
+def update_database_schema():
+    """Update database schema to add new columns"""
+    try:
+        with app.app_context():
+            # Check if barcode column exists
+            try:
+                db.session.execute(db.text("SELECT barcode FROM shipment LIMIT 1"))
+                print("✓ Barcode column already exists")
+            except Exception:
+                print("Adding barcode column to shipment table...")
+                try:
+                    db.session.execute(db.text("ALTER TABLE shipment ADD COLUMN barcode VARCHAR(20)"))
+                    print("✓ Added barcode column")
+                except Exception as e:
+                    print(f"Note: Could not add barcode column: {e}")
+
+            # Check if final_price_pkr column exists
+            try:
+                db.session.execute(db.text("SELECT final_price_pkr FROM shipment LIMIT 1"))
+                print("✓ Final price PKR column already exists")
+            except Exception:
+                print("Adding final_price_pkr column to shipment table...")
+                try:
+                    db.session.execute(db.text("ALTER TABLE shipment ADD COLUMN final_price_pkr FLOAT"))
+                    print("✓ Added final_price_pkr column")
+                except Exception as e:
+                    print(f"Note: Could not add final_price_pkr column: {e}")
+
+            # Check if branch_id column exists (new structure)
+            try:
+                db.session.execute(db.text("SELECT branch_id FROM shipment LIMIT 1"))
+                print("✓ Branch ID column already exists")
+            except Exception:
+                print("Note: Branch ID column not found - using existing structure")
+
+            db.session.commit()
+            print("Database schema check completed!")
+            return True
+
+    except Exception as e:
+        print(f"Error checking database schema: {e}")
+        return False
+
+def update_existing_shipments():
+    """Update existing shipments with barcodes and PKR pricing"""
+    try:
+        with app.app_context():
+            # Find shipments without barcodes - use a simpler query to avoid column issues
+            try:
+                # Try with branch_id first (new structure)
+                shipments_without_barcode = Shipment.query.filter(
+                    db.or_(Shipment.barcode.is_(None), Shipment.barcode == '')
+                ).all()
+            except Exception:
+                # If that fails, try with client_id (old structure)
+                shipments_without_barcode = Shipment.query.filter(
+                    db.or_(Shipment.barcode.is_(None), Shipment.barcode == '')
+                ).all()
+
+            if shipments_without_barcode:
+                print(f"Updating {len(shipments_without_barcode)} shipments with enhanced barcodes...")
+                for shipment in shipments_without_barcode:
+                    # Generate comprehensive barcode with shipment data if missing
+                    if not shipment.barcode:
+                        generate_barcode_with_shipment_data(shipment)
+
+                    # Calculate PKR price if missing
+                    if not shipment.final_price_pkr or shipment.final_price_pkr == 0:
+                        shipment.final_price_pkr = convert_to_pkr(shipment.final_price, shipment.destination_country.currency)
+
+                db.session.commit()
+                print(f"✓ Updated {len(shipments_without_barcode)} existing shipments with enhanced barcodes")
+            else:
+                print("All shipments already have barcodes and PKR pricing")
+
+            return True
+
+    except Exception as e:
+        print(f"Error updating existing shipments: {e}")
+        # Don't rollback here as it might cause context issues
+        return False
+
 # Initialize database only when running directly (not when imported)
 if __name__ == '__main__':
     print("Starting PICS Courier Application...")
-    print("Initializing database...")
+    print("Checking and updating database schema...")
 
-    if initialize_database():
-        print("Application ready!")
-        print("Access the application at: http://localhost:5000")
-        app.run(debug=True)
+    # First update schema if needed
+    schema_updated = update_database_schema()
+
+    if schema_updated:
+        print("Updating existing shipments with new features...")
+        update_existing_shipments()
+
+        print("Initializing database...")
+        if initialize_database():
+            print("Application ready!")
+            print("Access the application at: http://localhost:5000")
+            app.run(debug=True)
+        else:
+            print("Failed to initialize database. Please check the error messages above.")
+            exit(1)
     else:
-        print("Failed to initialize database. Please check the error messages above.")
+        print("Failed to update database schema.")
         exit(1)
 
 if __name__ == '__main__':

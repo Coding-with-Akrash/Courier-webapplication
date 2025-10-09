@@ -1,0 +1,557 @@
+{% extends 'base.html' %}
+
+{% block title %}Parcel Management - PICS Admin{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">
+                        <i class="fas fa-boxes text-blue-600 mr-2"></i>
+                        Advanced Parcel Management
+                    </h1>
+                    <p class="mt-2 text-gray-600">Manage all parcels with advanced filtering and bulk operations</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button onclick="showBulkActions()" class="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
+                        <i class="fas fa-cogs mr-2"></i>Bulk Actions
+                    </button>
+                    <button onclick="exportFilteredParcels()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                        <i class="fas fa-download mr-2"></i>Export
+                    </button>
+                    <button onclick="refreshData()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        <i class="fas fa-sync mr-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Filters -->
+        <div class="bg-white p-6 rounded-lg shadow mb-6">
+            <h2 class="text-lg font-semibold mb-4">
+                <i class="fas fa-filter mr-2"></i>Advanced Filters
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                    <input type="text" id="searchInput" placeholder="Tracking ID, Name, Phone..." class="p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                    <select id="statusFilter" class="p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full">
+                        <option value="">All Statuses</option>
+                        <option value="booked">Booked</option>
+                        <option value="in_transit">In Transit</option>
+                        <option value="out_for_delivery">Out for Delivery</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Country</label>
+                    <select id="countryFilter" class="p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full">
+                        <option value="">All Countries</option>
+                        {% for country in countries %}
+                        <option value="{{ country.id }}">{{ country.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Date From</label>
+                    <input type="date" id="dateFromFilter" class="p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Date To</label>
+                    <input type="date" id="dateToFilter" class="p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full">
+                </div>
+                <div class="flex items-end">
+                    <button onclick="applyFilters()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 w-full">
+                        <i class="fas fa-search mr-2"></i>Apply Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Statistics -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-box text-blue-600 text-2xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <div class="text-2xl font-bold text-gray-900" id="totalParcels">{{ total_parcels }}</div>
+                        <div class="text-gray-600">Total Parcels</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-truck text-green-600 text-2xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <div class="text-2xl font-bold text-gray-900" id="inTransitCount">{{ in_transit_count }}</div>
+                        <div class="text-gray-600">In Transit</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-check-circle text-purple-600 text-2xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <div class="text-2xl font-bold text-gray-900" id="deliveredCount">{{ delivered_count }}</div>
+                        <div class="text-gray-600">Delivered</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-weight text-orange-600 text-2xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <div class="text-2xl font-bold text-gray-900" id="totalWeight">{{ "%.1f"|format(total_weight) }} kg</div>
+                        <div class="text-gray-600">Total Weight</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Parcels Table -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg font-medium text-gray-900">All Parcels</h3>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-500" id="resultsCount">Showing {{ parcels|length }} parcels</span>
+                    <div class="flex items-center space-x-2">
+                        <label class="text-sm text-gray-600">Show:</label>
+                        <select id="perPageSelect" class="text-sm border border-gray-300 rounded px-2 py-1">
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left">
+                                <input type="checkbox" id="selectAll" class="rounded border-gray-300">
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tracking ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destination</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Barcode</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="parcelsTableBody">
+                        {% for parcel in parcels %}
+                        <tr class="hover:bg-gray-50" data-parcel-id="{{ parcel.id }}">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <input type="checkbox" class="parcel-checkbox" value="{{ parcel.id }}" class="rounded border-gray-300">
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">{{ parcel.tracking_id }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ parcel.client_name }}</div>
+                                <div class="text-xs text-gray-500">{{ parcel.sender_phone }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ parcel.destination_country }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ "%.2f"|format(parcel.chargeable_weight) }} kg</div>
+                                <div class="text-xs text-gray-500">{{ parcel.weight_type.title() }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">${{ "%.2f"|format(parcel.final_price) }}</div>
+                                <div class="text-xs text-gray-500">PKR {{ "%.2f"|format(parcel.final_price_pkr) }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-xs font-mono text-gray-600">{{ parcel.barcode }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <select class="status-select text-xs border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500" data-parcel-id="{{ parcel.id }}">
+                                    <option value="booked" {% if parcel.status == 'booked' %}selected{% endif %}>Booked</option>
+                                    <option value="in_transit" {% if parcel.status == 'in_transit' %}selected{% endif %}>In Transit</option>
+                                    <option value="out_for_delivery" {% if parcel.status == 'out_for_delivery' %}selected{% endif %}>Out for Delivery</option>
+                                    <option value="delivered" {% if parcel.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                                    <option value="cancelled" {% if parcel.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                </select>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ parcel.created_at.strftime('%Y-%m-%d') }}</div>
+                                <div class="text-xs text-gray-500">{{ parcel.created_at.strftime('%H:%M') }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div class="flex space-x-2">
+                                    <a href="{{ url_for('shipment_receipt', shipment_id=parcel.id) }}" class="text-blue-600 hover:text-blue-900" title="Receipt">
+                                        <i class="fas fa-receipt"></i>
+                                    </a>
+                                    <a href="{{ url_for('shipment_slip', shipment_id=parcel.id) }}" class="text-green-600 hover:text-green-900" title="Slip">
+                                        <i class="fas fa-file-alt"></i>
+                                    </a>
+                                    <button onclick="viewParcelDetails({{ parcel.id }})" class="text-purple-600 hover:text-purple-900" title="Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if pagination %}
+            <div class="px-6 py-4 border-t border-gray-200">
+                <div class="flex justify-between items-center">
+                    <div class="text-sm text-gray-700">
+                        Showing {{ pagination.per_page * (pagination.page - 1) + 1 }} to {{ pagination.per_page * pagination.page }} of {{ pagination.total }} parcels
+                    </div>
+                    <div class="flex space-x-2">
+                        {% if pagination.has_prev %}
+                        <a href="javascript:void(0)" onclick="changePage({{ pagination.prev_num }})" class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50">Previous</a>
+                        {% endif %}
+
+                        {% for page_num in pagination.iter_pages() %}
+                        {% if page_num %}
+                        {% if page_num == pagination.page %}
+                        <span class="px-3 py-1 bg-blue-600 text-white rounded text-sm">{{ page_num }}</span>
+                        {% else %}
+                        <a href="javascript:void(0)" onclick="changePage({{ page_num }})" class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50">{{ page_num }}</a>
+                        {% endif %}
+                        {% endif %}
+                        {% endfor %}
+
+                        {% if pagination.has_next %}
+                        <a href="javascript:void(0)" onclick="changePage({{ pagination.next_num }})" class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50">Next</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Actions Modal -->
+<div id="bulkActionsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Bulk Actions</h3>
+                <button onclick="closeBulkActionsModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Selected Parcels: <span id="selectedCount">0</span></label>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Action</label>
+                    <select id="bulkActionSelect" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">Select Action</option>
+                        <option value="mark_in_transit">Mark as In Transit</option>
+                        <option value="mark_out_for_delivery">Mark as Out for Delivery</option>
+                        <option value="mark_delivered">Mark as Delivered</option>
+                        <option value="cancel">Cancel Parcels</option>
+                    </select>
+                </div>
+
+                <div class="bg-yellow-50 border border-yellow-200 p-3 rounded">
+                    <p class="text-sm text-yellow-800">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        This action will be applied to all selected parcels. This cannot be undone.
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="closeBulkActionsModal()" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button onclick="executeBulkAction()" class="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700">
+                    Execute Action
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentFilters = {};
+let selectedParcels = new Set();
+
+function applyFilters() {
+    const filters = {
+        search: document.getElementById('searchInput').value,
+        status: document.getElementById('statusFilter').value,
+        country: document.getElementById('countryFilter').value,
+        date_from: document.getElementById('dateFromFilter').value,
+        date_to: document.getElementById('dateToFilter').value,
+        page: 1
+    };
+
+    currentFilters = filters;
+    loadParcels();
+}
+
+function loadParcels() {
+    const params = new URLSearchParams(currentFilters);
+    fetch(`/api/parcels/filter?${params.toString()}`)
+        .then(response => response.json())
+        .then(data => {
+            updateParcelsTable(data.parcels);
+            updateStatistics(data.statistics);
+            updatePagination(data.pagination);
+        })
+        .catch(error => {
+            console.error('Error loading parcels:', error);
+        });
+}
+
+function updateParcelsTable(parcels) {
+    const tbody = document.getElementById('parcelsTableBody');
+    tbody.innerHTML = '';
+
+    parcels.forEach(parcel => {
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-gray-50';
+        row.dataset.parcelId = parcel.id;
+
+        row.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap">
+                <input type="checkbox" class="parcel-checkbox" value="${parcel.id}" class="rounded border-gray-300">
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900">${parcel.tracking_id}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">${parcel.client_name}</div>
+                <div class="text-xs text-gray-500">${parcel.sender_phone}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">${parcel.destination_country}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">${parcel.chargeable_weight} kg</div>
+                <div class="text-xs text-gray-500">${parcel.weight_type}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900">$${parcel.final_price}</div>
+                <div class="text-xs text-gray-500">PKR ${parcel.final_price_pkr}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-xs font-mono text-gray-600">${parcel.barcode}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <select class="status-select text-xs border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500" data-parcel-id="${parcel.id}">
+                    <option value="booked" ${parcel.status === 'booked' ? 'selected' : ''}>Booked</option>
+                    <option value="in_transit" ${parcel.status === 'in_transit' ? 'selected' : ''}>In Transit</option>
+                    <option value="out_for_delivery" ${parcel.status === 'out_for_delivery' ? 'selected' : ''}>Out for Delivery</option>
+                    <option value="delivered" ${parcel.status === 'delivered' ? 'selected' : ''}>Delivered</option>
+                    <option value="cancelled" ${parcel.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                </select>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">${parcel.created_date}</div>
+                <div class="text-xs text-gray-500">${parcel.created_time}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <div class="flex space-x-2">
+                    <a href="/shipment/${parcel.id}/receipt" class="text-blue-600 hover:text-blue-900" title="Receipt">
+                        <i class="fas fa-receipt"></i>
+                    </a>
+                    <a href="/shipment/${parcel.id}/slip" class="text-green-600 hover:text-green-900" title="Slip">
+                        <i class="fas fa-file-alt"></i>
+                    </a>
+                    <button onclick="viewParcelDetails(${parcel.id})" class="text-purple-600 hover:text-purple-900" title="Details">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+
+        tbody.appendChild(row);
+    });
+
+    // Update results count
+    document.getElementById('resultsCount').textContent = `Showing ${parcels.length} parcels`;
+}
+
+function updateStatistics(stats) {
+    document.getElementById('totalParcels').textContent = stats.total_parcels;
+    document.getElementById('inTransitCount').textContent = stats.in_transit_count;
+    document.getElementById('deliveredCount').textContent = stats.delivered_count;
+    document.getElementById('totalWeight').textContent = `${stats.total_weight} kg`;
+}
+
+function changePage(page) {
+    currentFilters.page = page;
+    loadParcels();
+}
+
+// Checkbox selection handling
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.parcel-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+        if (this.checked) {
+            selectedParcels.add(checkbox.value);
+        } else {
+            selectedParcels.delete(checkbox.value);
+        }
+    });
+    updateSelectedCount();
+});
+
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('parcel-checkbox')) {
+        if (e.target.checked) {
+            selectedParcels.add(e.target.value);
+        } else {
+            selectedParcels.delete(e.target.value);
+        }
+        updateSelectedCount();
+    }
+});
+
+function updateSelectedCount() {
+    document.getElementById('selectedCount').textContent = selectedParcels.size;
+}
+
+function showBulkActions() {
+    if (selectedParcels.size === 0) {
+        alert('Please select at least one parcel to perform bulk actions.');
+        return;
+    }
+    document.getElementById('bulkActionsModal').classList.remove('hidden');
+}
+
+function closeBulkActionsModal() {
+    document.getElementById('bulkActionsModal').classList.add('hidden');
+    document.getElementById('bulkActionSelect').value = '';
+}
+
+function executeBulkAction() {
+    const action = document.getElementById('bulkActionSelect').value;
+    if (!action) {
+        alert('Please select an action.');
+        return;
+    }
+
+    if (confirm(`Are you sure you want to ${action.replace('_', ' ')} ${selectedParcels.size} parcels?`)) {
+        fetch('/api/parcels/bulk-update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                parcel_ids: Array.from(selectedParcels),
+                action: action
+            })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                closeBulkActionsModal();
+                selectedParcels.clear();
+                loadParcels();
+                alert('Bulk action completed successfully!');
+            } else {
+                alert('Error executing bulk action: ' + result.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error executing bulk action');
+        });
+    }
+}
+
+// Status change handling
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('status-select')) {
+        const parcelId = e.target.dataset.parcelId;
+        const newStatus = e.target.value;
+
+        fetch(`/shipment/${parcelId}/update-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                status: newStatus
+            })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                // Update row styling based on status
+                const row = e.target.closest('tr');
+                row.className = `hover:bg-gray-50 ${getStatusRowClass(newStatus)}`;
+            } else {
+                alert('Error updating status: ' + result.error);
+                // Revert the select
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating status');
+            location.reload();
+        });
+    }
+});
+
+function getStatusRowClass(status) {
+    const classes = {
+        'booked': '',
+        'in_transit': 'bg-blue-50',
+        'out_for_delivery': 'bg-yellow-50',
+        'delivered': 'bg-green-50',
+        'cancelled': 'bg-red-50'
+    };
+    return classes[status] || '';
+}
+
+function viewParcelDetails(parcelId) {
+    window.open(`/shipment/${parcelId}/receipt`, '_blank');
+}
+
+function exportFilteredParcels() {
+    const params = new URLSearchParams(currentFilters);
+    window.location.href = `/api/parcels/export?${params.toString()}`;
+}
+
+function refreshData() {
+    loadParcels();
+}
+
+// Auto-refresh every 30 seconds
+setInterval(refreshData, 30000);
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    loadParcels();
+});
+</script>
+{% endblock %}
